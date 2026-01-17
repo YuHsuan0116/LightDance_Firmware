@@ -20,8 +20,6 @@ Player::~Player() = default;
 
 esp_err_t Player::init() {
     ESP_RETURN_ON_FALSE(!taskAlive, ESP_ERR_INVALID_STATE, TAG, "player already started");
-
-    currentState = &UnloadedState::getInstance();
     return createTask();
 }
 
@@ -125,11 +123,11 @@ esp_err_t Player::testPlayback(uint8_t r, uint8_t g, uint8_t b) {
 
 /* ================= FSM ================= */
 
-void Player::changeState(State& newState) {
-    currentState->exit(*this);
-    currentState = &newState;
-    currentState->enter(*this);
-}
+// void Player::changeState(State& newState) {
+//     currentState->exit(*this);
+//     currentState = &newState;
+//     currentState->enter(*this);
+// }
 
 /* ================= RTOS ================= */
 
@@ -143,12 +141,11 @@ esp_err_t Player::createTask() {
 
 void Player::taskEntry(void* pvParameters) {
     Player& p = Player::getInstance();
-    p.currentState->enter(p);
+    p.switchState(Player::PlayerState::UNLOADED);
 
     Event bootEvent;
     bootEvent.type = EVENT_LOAD;
-    p.currentState->handleEvent(p, bootEvent);
-
+    p.processEvent(bootEvent);
     p.Loop();
 }
 
@@ -166,12 +163,12 @@ void Player::Loop() {
                     running = false;
                     break;
                 }
-                currentState->handleEvent(*this, e);
+                processEvent(e);
             }
         }
 
         if(running && (ulNotifiedValue & NOTIFICATION_UPDATE)) {
-            currentState->update(*this);
+            updateState();
         }
     }
 

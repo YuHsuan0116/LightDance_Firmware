@@ -9,7 +9,7 @@
 #include "player_clock.h"
 #include "player_protocal.h"
 
-class State;
+#define SHOW_TRANSITION 0
 
 class Player {
   public:
@@ -32,6 +32,8 @@ class Player {
     esp_err_t test(uint8_t, uint8_t, uint8_t);
     esp_err_t exit();
 
+  private:
+
     // ===== Called by State =====
 
     esp_err_t startPlayback();
@@ -42,14 +44,27 @@ class Player {
 
     // ===== FSM =====
 
-    void changeState(State& newState);
+    enum class PlayerState {
+        UNLOADED,
+        READY,
+        PLAYING,
+        PAUSE,
+        TEST,
+    };
+
+    const char* getStateName(PlayerState state);
+    void switchState(PlayerState newState); //  enter/exit
+    void processEvent(Event& e);            //  handleEvent (switch-case)
+    void updateState();                     //  update
 
     // ===== Resource Management =====
 
     esp_err_t acquireResources();
     esp_err_t releaseResources();
 
+  
   private:
+
     Player();
     ~Player();
 
@@ -64,7 +79,7 @@ class Player {
   private:
     // ===== FSM =====
 
-    State* currentState = nullptr;
+    PlayerState m_state = PlayerState::UNLOADED;
 
     // ===== Resources =====
 
