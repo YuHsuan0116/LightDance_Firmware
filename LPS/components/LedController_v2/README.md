@@ -8,10 +8,10 @@ The project is organized into four distinct layers, ranging from hardware config
 
 | Module | File Name | Description |
 | :--- | :--- | :--- |
-| **01** | `BoardConfig` | **HAL Config.** Defines GPIO pins, I2C addresses, and global channel limits. Uses `Unions` for flexible access. |
-| **02** | `ws2812b_hal` | **RMT Driver.** Optimized, non-blocking driver for WS2812B strips using ESP32 RMT peripheral. |
-| **03** | `pca9955b_hal` | **I2C Driver.** Shadow-buffered driver for PCA9955B with auto-recovery for IREF registers. |
-| **04** | `LedController` | **Application API.** Unified C++ class that manages all drivers and implements parallel transmission strategies. |
+| **01** | [BoardConfig](docs/01-BoardConfig.md) | **HAL Config.** Defines GPIO pins... |
+| **02** | [ws2812b_hal](docs/02-ws2812b.md) | **RMT Driver.** Optimized, non-blocking... |
+| **03** | [pca9955b_hal](docs/03-pca9955b.md) | **I2C Driver.** Shadow-buffered driver... |
+| **04** | [LedController](docs/04-LedController.md) | **Application API.** Unified C++ class... |
 
 ## 🏗 Architecture
 
