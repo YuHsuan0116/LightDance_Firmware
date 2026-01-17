@@ -26,5 +26,3 @@ class LedController {
     ws2812b_dev_t ws2812b_devs[WS2812B_NUM];
     pca9955b_dev_t pca9955b_devs[PCA9955B_NUM];
 };
-
-void Controller_test();
