@@ -13,7 +13,7 @@ The component is divided into four logical sub-modules. Click the links below fo
 | **01** | [Color Math](docs/01-color.md) | **Core Utilities.** High-performance integer math, 16-bit Hue resolution, and HSV/RGB conversion algorithms. |
 | **02** | [FrameBuffer](docs/02-framebuffer.md) | **Animation Engine.** Handles keyframe storage, timeline advancement, and real-time color interpolation (Linear/Step). |
 | **03** | [PlayerClock](docs/03-player_clock.md) | **Timing System.** Manages the playback timeline (Play/Pause/Reset) and hardware metronome (GPTimer) for precise tick generation. |
-| **04** | [PlayerEngine](docs/04-player_engine.md) | **Main Controller.** The central FSM (Finite State Machine) that coordinates the Clock, FrameBuffer, and LED Hardware. |
+| **04** | [PlayerEngine](docs/04-player.md) | **Main Controller.** The central FSM (Finite State Machine) that coordinates the Clock, FrameBuffer, and LED Hardware. |
 
 ## 🏗 System Architecture
 
@@ -22,7 +22,7 @@ The Player acts as the bridge between your **Data Source** (SD Card/Flash) and t
 ```mermaid
 graph TD
     %% High Level API
-    User[User Application] -->|Events: Play/Pause| Player(04 - Player Engine)
+    User[User Application] -->|Events: Play/Pause| Player(04 - Player)
     
     %% Internal Logic
     subgraph "Player Component"
