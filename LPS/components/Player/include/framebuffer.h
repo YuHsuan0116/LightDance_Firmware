@@ -2,7 +2,7 @@
 
 #include "esp_err.h"
 
-#include "LedController_v2.hpp"
+#include "BoardConfig.h"
 #include "color.h"
 
 typedef struct {

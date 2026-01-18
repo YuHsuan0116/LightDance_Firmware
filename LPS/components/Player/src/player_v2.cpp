@@ -140,11 +140,12 @@ esp_err_t Player::createTask() {
 
 void Player::taskEntry(void* pvParameters) {
     Player& p = Player::getInstance();
-    p.switchState(Player::PlayerState::UNLOADED);
+    // p.switchState(Player::PlayerState::UNLOADED);
 
     Event bootEvent;
     bootEvent.type = EVENT_LOAD;
     p.processEvent(bootEvent);
+
     p.Loop();
 }
 
