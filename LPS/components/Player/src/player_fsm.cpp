@@ -124,6 +124,10 @@ void Player::processEvent(Event& e) {
             if (e.type == EVENT_PAUSE) switchState(PlayerState::PAUSE);
             else if (e.type == EVENT_RESET) switchState(PlayerState::READY);
             else if (e.type == EVENT_RELEASE) switchState(PlayerState::UNLOADED);
+            else if (e.type == EVENT_TEST) {
+                testPlayback(e.test_data.r, e.test_data.g, e.test_data.b);
+                switchState(PlayerState::TEST);
+            }
             else ESP_LOGW(TAG, "PlayingState: ignoring event %s", getEventName(e.type));
             break;
             
@@ -138,6 +142,7 @@ void Player::processEvent(Event& e) {
             if (e.type == EVENT_TEST) {
                 testPlayback(e.test_data.r, e.test_data.g, e.test_data.b);
             }
+            else if (e.type == EVENT_RESET) switchState(PlayerState::READY);
             else if (e.type == EVENT_RELEASE) switchState(PlayerState::UNLOADED);
             else ESP_LOGW(TAG, "TestState: ignoring event %s", getEventName(e.type));
             break;

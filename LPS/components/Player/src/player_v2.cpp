@@ -1,5 +1,4 @@
 #include "player_v2.hpp"
-#include "player_state.hpp"
 
 #include "esp_check.h"
 #include "esp_log.h"
