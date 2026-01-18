@@ -21,22 +21,23 @@ The Player acts as the bridge between your **Data Source** (SD Card/Flash) and t
 
 ```mermaid
 graph TD
+graph TD
     %% High Level API
-    User[User Application] -->|Events: Play/Pause| Player(04 - Player )
+    User[User Application] -->|"Events: Play/Pause"| Player("04 - Player")
     
     %% Internal Logic
     subgraph "Player Component"
-        Player -->|Control| Clock(03 - Clock & Metronome)
-        Clock -->|Tick (ISR)| Player
+        Player -->|Control| Clock("03 - Clock & Metronome")
+        Clock -->|"Tick (ISR)"| Player
         
-        Player -->|Time (ms)| FB(02 - FrameBuffer)
-        FB -->|Math| Color(01 - Color Math)
+        Player -->|"Time (ms)"| FB("02 - FrameBuffer")
+        FB -->|Math| Color("01 - Color Math")
         
-        Data((External Data)) -.->|Read Keyframes| FB
+        Data((External Data)) -.->|"Read Keyframes"| FB
     end
     
     %% Output
-    FB -->|Raw Buffer| LED[Hardware: LedController]
+    FB -->|"Raw Buffer"| LED["Hardware: LedController"]
 ```
 
 ## ⚡ Key Features
