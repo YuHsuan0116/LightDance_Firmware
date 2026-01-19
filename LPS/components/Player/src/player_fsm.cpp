@@ -1,5 +1,5 @@
 #include "esp_log.h"
-#include "player_v2.hpp"
+#include "player.hpp"
 
 static const char* TAG = "Player_fsm.cpp";
 

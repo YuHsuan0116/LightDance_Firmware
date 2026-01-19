@@ -53,7 +53,7 @@ graph TD
 The Player is a Singleton. You typically initialize it in your `app_main`, then control it via user inputs.
 
 ```cpp
-#include "player_v2.hpp"
+#include "player.hpp"
 
 // Define the external data fetcher (Required by FrameBuffer)
 void test_read_frame(table_frame_t* frame) {
@@ -100,12 +100,12 @@ components/Player/
 │   ├── framebuffer.h
 │   ├── player_clock.h
 │   ├── player_protocol.h      <-- Event & Struct definitions
-│   └── player_v2.hpp          <-- Main Class
+│   └── player.hpp          <-- Main Class
 ├── src/                       <-- Source Code
 │   ├── framebuffer.cpp
 │   ├── player_clock.cpp
 │   ├── player_fsm.cpp         <-- State Machine Logic
-│   └── player_v2.cpp          <-- Task & Main Loop
+│   └── player.cpp          <-- Task & Main Loop
 ├── CMakeLists.txt
 └── README.md                  <-- This file
 ```

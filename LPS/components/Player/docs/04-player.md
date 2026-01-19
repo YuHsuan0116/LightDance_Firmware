@@ -1,6 +1,6 @@
 # 04 - Player Engine (Core FSM)
 
-The **Player** class (`Player_v2`) is the central orchestrator of the system. It implements a **Singleton** pattern and runs a comprehensive **Finite State Machine (FSM)** within a dedicated high-priority RTOS task.
+The **Player** class (`Player`) is the central orchestrator of the system. It implements a **Singleton** pattern and runs a comprehensive **Finite State Machine (FSM)** within a dedicated high-priority RTOS task.
 
 ## 1. Overview
 
@@ -55,7 +55,7 @@ The Player enforces a strict state lifecycle to prevent undefined behaviors (e.g
 ### Transition Diagram
 
 ```mermaid
-stateDiagram-v2
+stateDiagram
     [*] --> UNLOADED
     UNLOADED --> READY: load()
 

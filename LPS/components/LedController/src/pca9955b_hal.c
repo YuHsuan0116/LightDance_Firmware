@@ -1,4 +1,4 @@
-#include "pca9955b_hal_v2.h"
+#include "pca9955b_hal.h"
 
 #include "string.h"
 

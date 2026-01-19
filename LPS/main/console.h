@@ -7,7 +7,7 @@
 #include "esp_system.h"
 #include "esp_vfs_fat.h"
 
-#include "player_v2.hpp"
+#include "player.hpp"
 
 
 #define PROMPT_STR "cmd"

@@ -4,7 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-#include "LedController_v2.hpp"
+#include "LedController.hpp"
 #include "framebuffer.h"
 #include "player_clock.h"
 #include "player_protocal.h"
