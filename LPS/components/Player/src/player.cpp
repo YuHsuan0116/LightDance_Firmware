@@ -133,9 +133,9 @@ esp_err_t Player::createTask() {
 }
 
 void Player::taskEntry(void* pvParameters) {
-    
+
     Player& p = Player::getInstance();
-    
+
     // p.switchState(Player::PlayerState::UNLOADED);
 
     // Event bootEvent;

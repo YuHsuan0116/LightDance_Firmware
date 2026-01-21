@@ -1,9 +1,10 @@
 #include "framebuffer.hpp"
 
+#include <string.h>
 #include "algorithm"
 #include "esp_log.h"
-#include <string.h>
 #include "readframe.h"
+
 
 static const char* TAG = "fb";
 
@@ -45,6 +46,7 @@ esp_err_t FrameBuffer::reset() {
     memset(&buffer, 0, sizeof(buffer));
 
     count = 0;
+    frame_reset();
     read_frame(current);
     read_frame(next);
 
