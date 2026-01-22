@@ -51,21 +51,12 @@ esp_err_t LedController::write_buffer(int ch_idx, uint8_t* data) {
     // 1. Validate Input
     ESP_RETURN_ON_FALSE(data, ESP_ERR_INVALID_ARG, TAG, "Data buffer is NULL");
 
-    // 2. Handle WS2812B Strips (Indices 0 to WS2812B_NUM - 1)
-    if(ch_idx < WS2812B_NUM) {
-        // Ensure the device handle is valid before writing
-        ESP_RETURN_ON_FALSE(&ws2812b_devs[ch_idx], ESP_ERR_INVALID_STATE, TAG, "WS2812B[%d] not initialized", ch_idx);
-
-        // Pass the full strip buffer to the HAL
-        return ws2812b_write(&ws2812b_devs[ch_idx], data);
-    }
-
-    if(ch_idx >= WS2812B_NUM) {
-        int relative_idx = ch_idx - WS2812B_NUM;
+    // 2. Handle PCA9955B Strips
+    if(ch_idx < PCA9955B_CH_NUM) {
 
         // Calculate device and pixel index (5 LEDs per PCA9955B chip)
-        int dev_idx = relative_idx / 5;
-        int pixel_idx = relative_idx % 5;
+        int dev_idx = ch_idx / 5;
+        int pixel_idx = ch_idx % 5;
 
         // Validate PCA device bounds
         if(dev_idx >= PCA9955B_NUM) {
@@ -83,6 +74,16 @@ esp_err_t LedController::write_buffer(int ch_idx, uint8_t* data) {
         uint8_t blue = data[2];
 
         return pca9955b_set_pixel(&pca9955b_devs[dev_idx], pixel_idx, red, green, blue);
+    }
+
+    // 3. Handle WS2812B Strips
+    if(ch_idx >= PCA9955B_CH_NUM) {
+        // Ensure the device handle is valid before writing
+        ESP_RETURN_ON_FALSE(
+            &ws2812b_devs[ch_idx - PCA9955B_CH_NUM], ESP_ERR_INVALID_STATE, TAG, "WS2812B[%d] not initialized", ch_idx - PCA9955B_CH_NUM);
+
+        // Pass the full strip buffer to the HAL
+        return ws2812b_write(&ws2812b_devs[ch_idx - PCA9955B_CH_NUM], data);
     }
 
     return ESP_ERR_INVALID_ARG;

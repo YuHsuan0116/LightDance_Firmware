@@ -33,7 +33,6 @@ class Player {
     esp_err_t exit();
 
   private:
-
     // ===== Called by State =====
 
     esp_err_t startPlayback();
@@ -53,18 +52,16 @@ class Player {
     };
 
     const char* getStateName(PlayerState state);
-    void switchState(PlayerState newState); //  enter/exit
-    void processEvent(Event& e);            //  handleEvent (switch-case)
-    void updateState();                     //  update
+    void switchState(PlayerState newState);  //  enter/exit
+    void processEvent(Event& e);             //  handleEvent (switch-case)
+    void updateState();                      //  update
 
     // ===== Resource Management =====
 
     esp_err_t acquireResources();
     esp_err_t releaseResources();
 
-  
   private:
-
     Player();
     ~Player();
 
@@ -94,3 +91,5 @@ class Player {
     TaskHandle_t taskHandle = nullptr;
     QueueHandle_t eventQueue = nullptr;
 };
+
+void console_test();

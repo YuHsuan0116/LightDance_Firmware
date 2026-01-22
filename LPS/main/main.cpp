@@ -3,11 +3,9 @@
 #include "freertos/task.h"
 
 #include "bt_receiver.h"
-#include "console.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
 
-#include "console_new.h"
 #include "player.hpp"
 #include "readframe.h"
 
@@ -47,6 +45,7 @@ static void app_task(void* arg) {
 }
 
 extern "C" void app_main(void) {
-    xTaskCreate(app_task, "app_task", 16384, NULL, 5, NULL);
+    // xTaskCreate(app_task, "app_task", 16384, NULL, 5, NULL);
     // app_main return 讓 main task 結束，不再承擔後續 stack 壓力
+    console_test();
 }
