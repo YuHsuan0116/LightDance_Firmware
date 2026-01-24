@@ -118,8 +118,7 @@ void Player::processEvent(Event& e) {
                     switchState(PlayerState::READY);
                 else
                     ESP_LOGE(TAG, "resource acquire failed");
-            }
-            else
+            } else
                 ESP_LOGW(TAG, "UnloadedState: ignoring event %s", getEventName(e.type));
             break;
 

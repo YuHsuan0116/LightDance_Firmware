@@ -12,7 +12,7 @@
 static const char* TAG = "APP";
 
 static void app_task(void* arg) {
-    (void)arg;
+    // (void)arg;
 
     ESP_LOGI(TAG, "app_task start, HWM=%u", uxTaskGetStackHighWaterMark(NULL));
 
@@ -25,27 +25,25 @@ static void app_task(void* arg) {
         vTaskDelay(portMAX_DELAY);
     }
 
+    // console_test();  // 進入 REPL（通常不會 return）
     Player::getInstance().init();
-    ESP_LOGI(TAG, "HWM after Player::init=%u", uxTaskGetStackHighWaterMark(NULL));
+    console_test();
 
-    // start_console();  // 進入 REPL（通常不會 return）
-
-    nvs_flash_init();
-    bt_receiver_config_t rx_cfg = {
-        .feedback_gpio_num = -1,
-        .manufacturer_id = 0xFFFF,
-        .my_player_id = 1,
-        .sync_window_us = 500000,
-        .queue_size = 20,
-    };
-    bt_receiver_init(&rx_cfg);
-    bt_receiver_start();
+    // nvs_flash_init();
+    // bt_receiver_config_t rx_cfg = {
+    //     .feedback_gpio_num = -1,
+    //     .manufacturer_id = 0xFFFF,
+    //     .my_player_id = 1,
+    //     .sync_window_us = 500000,
+    //     .queue_size = 20,
+    // };
+    // bt_receiver_init(&rx_cfg);
+    // bt_receiver_start();
 
     vTaskDelete(NULL);
 }
 
 extern "C" void app_main(void) {
-    // xTaskCreate(app_task, "app_task", 16384, NULL, 5, NULL);
+    xTaskCreate(app_task, "app_task", 16384, NULL, 5, NULL);
     // app_main return 讓 main task 結束，不再承擔後續 stack 壓力
-    console_test();
 }

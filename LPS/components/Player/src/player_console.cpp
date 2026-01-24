@@ -124,6 +124,4 @@ void console_test(void) {
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&hw_config, &repl_config, &repl));
 
     ESP_ERROR_CHECK(esp_console_start_repl(repl));
-
-    Player::getInstance().init();
 }

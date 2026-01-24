@@ -98,16 +98,17 @@ esp_err_t Player::resetPlayback() {
 
 esp_err_t Player::updatePlayback() {
     const uint64_t time_ms = clock.now_us() / 1000;
+
     fb.compute(time_ms);
 
     frame_data* buf = fb.get_buffer();
 
-    for(int i = 0; i < WS2812B_NUM; i++) {
-        controller.write_buffer(i, (uint8_t*)buf->ws2812b[i]);
+    for(int i = 0; i < PCA9955B_CH_NUM; i++) {
+        controller.write_buffer(i, (uint8_t*)&buf->pca9955b[i]);
     }
 
-    for(int i = 0; i < PCA9955B_CH_NUM; i++) {
-        controller.write_buffer(i + WS2812B_NUM, (uint8_t*)&buf->pca9955b[i]);
+    for(int i = 0; i < WS2812B_NUM; i++) {
+        controller.write_buffer(i + PCA9955B_CH_NUM, (uint8_t*)buf->ws2812b[i]);
     }
 
     // print_frame_data(*buf);
@@ -218,11 +219,6 @@ esp_err_t Player::releaseResources() {
     clock.deinit();
     fb.deinit();
     controller.deinit();
-
-    // if(eventQueue) {
-    //     vQueueDelete(eventQueue);
-    //     eventQueue = nullptr;
-    // }
 
     resources_acquired = false;
     return ESP_OK;

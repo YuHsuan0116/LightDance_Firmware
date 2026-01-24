@@ -9,6 +9,8 @@
 #include "player_clock.h"
 #include "player_protocal.h"
 
+#include "readframe.h"
+
 #define SHOW_TRANSITION 0
 
 class Player {

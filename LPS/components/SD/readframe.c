@@ -192,6 +192,8 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
     if(err != ESP_OK)
         return err;
 
+    ESP_LOGI(TAG, "ctrl reader: HWM=%u", uxTaskGetStackHighWaterMark(NULL));
+
     /* 2. init frame reader */
     frame_layout_t layout = {
         .of_num = g_ctrl.of_num,
@@ -204,6 +206,7 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
         control_reader_free(&g_ctrl);
         return err;
     }
+    ESP_LOGI(TAG, "frame reader: HWM=%u", uxTaskGetStackHighWaterMark(NULL));
 
     /* 3. semaphore */
     sem_free = xSemaphoreCreateBinary();
