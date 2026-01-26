@@ -116,9 +116,15 @@ void Player::processEvent(Event& e) {
             if(e.type == EVENT_LOAD) {
                 if(acquireResources() == ESP_OK)
                     switchState(PlayerState::READY);
-                else
+                else{
                     ESP_LOGE(TAG, "resource acquire failed");
-            } else
+                    vTaskDelay(pdMS_TO_TICKS(1000)); // avoid busy loop
+                    Event e;
+                    e.type = EVENT_LOAD;
+                    sendEvent(e);
+                }
+            }
+            else
                 ESP_LOGW(TAG, "UnloadedState: ignoring event %s", getEventName(e.type));
             break;
 
