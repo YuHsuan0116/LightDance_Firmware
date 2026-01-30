@@ -82,9 +82,9 @@ Based on the `timer_timeout_cb` implementation:
 
 * `0x01`: Play
 * `0x02`: Pause
-* `0x03`: Reset
+* `0x03`: Stop
 * `0x04`: Release (Resources)
-* `0x05`: Load
+<!-- * `0x05`: Load -->
 * `0x06`: Test (Uses the `Data` field)
 * `0x07`: Cancel (Cancels the schedule for a specific `CMD_ID`)
 

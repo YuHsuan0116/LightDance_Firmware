@@ -54,11 +54,11 @@ esp_err_t Player::release() {
     return sendEvent(e);
 }
 
-esp_err_t Player::load() {
-    Event e{};
-    e.type = EVENT_LOAD;
-    return sendEvent(e);
-}
+// esp_err_t Player::load() {
+//     Event e{};
+//     e.type = EVENT_LOAD;
+//     return sendEvent(e);
+// }
 
 esp_err_t Player::test(uint8_t r, uint8_t g, uint8_t b) {
     Event e{};
@@ -202,8 +202,8 @@ esp_err_t Player::acquireResources() {
     }
 
     ESP_RETURN_ON_FALSE(eventQueue != nullptr, ESP_ERR_NO_MEM, TAG, "queue alloc failed");
-
-    ESP_RETURN_ON_ERROR(controller.init(), TAG, "controller init failed");
+    controller.init();
+    //ESP_RETURN_ON_ERROR(controller.init(), TAG, "controller init failed");
     ESP_RETURN_ON_ERROR(fb.init(), TAG, "framebuffer init failed");
     ESP_RETURN_ON_ERROR(clock.init(true, taskHandle, 1000000 / 40), TAG, "clock init failed");
 

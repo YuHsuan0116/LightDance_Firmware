@@ -57,7 +57,7 @@ The Player enforces a strict state lifecycle to prevent undefined behaviors (e.g
 ```mermaid
 stateDiagram
     [*] --> UNLOADED
-    UNLOADED --> READY: load()
+    UNLOADED --> READY: autosend EVENT_LOAD
 
     READY --> UNLOADED: release()
     READY --> PLAYING: play()
@@ -124,7 +124,6 @@ esp_err_t init();
 
 ### Commands
 ```cpp
-esp_err_t load();    // Initialize hardware -> Goto READY
 esp_err_t play();    // Start animation -> Goto PLAYING
 esp_err_t pause();   // Freeze animation -> Goto PAUSED
 esp_err_t stop();   // Stop and rewind to 0 -> Goto READY

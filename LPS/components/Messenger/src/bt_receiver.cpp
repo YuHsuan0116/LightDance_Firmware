@@ -260,9 +260,9 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
         case 0x04:
             Player::getInstance().release();
             break;
-        case 0x05:
-            Player::getInstance().load();
-            break;
+        // case 0x05:
+        //     Player::getInstance().load();
+        //     break;
         case 0x06:
             Player::getInstance().test(test_data[0], test_data[1], test_data[2]);
             break;

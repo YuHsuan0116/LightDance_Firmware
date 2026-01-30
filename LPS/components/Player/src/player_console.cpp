@@ -41,10 +41,10 @@ static int cmd_release(int argc, char** argv) {
     return 0;
 }
 
-static int cmd_load(int argc, char** argv) {
-    Player::getInstance().load();
-    return 0;
-}
+// static int cmd_load(int argc, char** argv) {
+//     Player::getInstance().load();
+//     return 0;
+// }
 
 static int cmd_exit(int argc, char** argv) {
     Player::getInstance().exit();
@@ -103,7 +103,7 @@ static void register_all_commands(void) {
     register_cmd("pause", "pause playback", &cmd_pause);
     register_cmd("stop", "stop playback", &cmd_stop);
     register_cmd("release", "release player", &cmd_release);
-    register_cmd("load", "load frames", &cmd_load);
+    // register_cmd("load", "load frames", &cmd_load);
     register_cmd("test", "test rgb output", &cmd_test);
     register_cmd("exit", "exit player", &cmd_exit);
 }
