@@ -26,10 +26,8 @@ static void app_task(void* arg) {
     }
 #endif
 
-    // console_test();  // 進入 REPL（通常不會 return）
     cal_gamma_lut();
     Player::getInstance().init();
-    console_test();
 
 #if BT_ENABLE
     nvs_flash_init();
@@ -42,6 +40,8 @@ static void app_task(void* arg) {
     };
     bt_receiver_init(&rx_cfg);
     bt_receiver_start();
+#else
+    console_test();
 #endif
 
     vTaskDelete(NULL);
@@ -49,5 +49,4 @@ static void app_task(void* arg) {
 
 extern "C" void app_main(void) {
     xTaskCreate(app_task, "app_task", 16384, NULL, 5, NULL);
-    // app_main return 讓 main task 結束，不再承擔後續 stack 壓力
 }

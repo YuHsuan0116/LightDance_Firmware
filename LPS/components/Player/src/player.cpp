@@ -126,7 +126,7 @@ esp_err_t Player::testPlayback(uint8_t r, uint8_t g, uint8_t b) {
 /* ================= RTOS ================= */
 
 esp_err_t Player::createTask() {
-    BaseType_t res = xTaskCreatePinnedToCore(Player::taskEntry, "PlayerTask", 8192, NULL, 5, &taskHandle, 0);
+    BaseType_t res = xTaskCreatePinnedToCore(Player::taskEntry, "PlayerTask", 8192, NULL, 5, &taskHandle, 1);
     eventQueue = xQueueCreate(50, sizeof(Event));
     ESP_RETURN_ON_FALSE(res == pdPASS, ESP_FAIL, TAG, "create task failed");
     taskAlive = true;
@@ -137,11 +137,9 @@ void Player::taskEntry(void* pvParameters) {
 
     Player& p = Player::getInstance();
 
-    // p.switchState(Player::PlayerState::UNLOADED);
-
     Event bootEvent;
     bootEvent.type = EVENT_LOAD;
-    p.processEvent(bootEvent); // auto-load on start
+    p.processEvent(bootEvent);  // auto-load on start
 
     p.Loop();
 }
@@ -203,7 +201,7 @@ esp_err_t Player::acquireResources() {
 
     ESP_RETURN_ON_FALSE(eventQueue != nullptr, ESP_ERR_NO_MEM, TAG, "queue alloc failed");
     controller.init();
-    //ESP_RETURN_ON_ERROR(controller.init(), TAG, "controller init failed");
+    // ESP_RETURN_ON_ERROR(controller.init(), TAG, "controller init failed");
     ESP_RETURN_ON_ERROR(fb.init(), TAG, "framebuffer init failed");
     ESP_RETURN_ON_ERROR(clock.init(true, taskHandle, 1000000 / 40), TAG, "clock init failed");
 
