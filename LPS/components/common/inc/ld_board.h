@@ -8,7 +8,8 @@
 #define WS2812B_MAX_PIXEL_NUM 100
 
 #define PCA9955B_NUM 8
-#define PCA9955B_CH_NUM (5 * PCA9955B_NUM)
+#define PCA9955B_RGB_PER_IC 5
+#define PCA9955B_CH_NUM (PCA9955B_RGB_PER_IC * PCA9955B_NUM)
 
 typedef struct {
     /** @brief PCA9955B IC I2C addresses for LED channels 0–39 */
@@ -58,3 +59,14 @@ typedef struct {
 
 extern const hw_config_t BOARD_HW_CONFIG;
 extern ch_info_t ch_info;
+
+typedef struct {
+    union {
+        uint16_t pixel_counts_flat[WS2812B_NUM + PCA9955B_CH_NUM];
+
+        struct {
+            uint16_t ws2812b_pixel_counts[WS2812B_NUM];
+            uint16_t pca9955b_pixel_counts[PCA9955B_CH_NUM];
+        };
+    };
+} ld_channel_layout_t;

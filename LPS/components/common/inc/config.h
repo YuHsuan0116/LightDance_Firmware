@@ -13,3 +13,5 @@
 #define I2C_TIMEOUT_MS 2
 
 #define RMT_TIMEOUT_MS 10
+
+#define LD_IGNORE_DRIVER_INIT_FAIL 0

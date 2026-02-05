@@ -9,6 +9,7 @@
 
 extern "C" {
 #include "ld_ws2812b_tx.h"
+#include "led_types.h"
 }
 
 namespace ld {

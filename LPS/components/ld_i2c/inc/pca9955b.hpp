@@ -9,6 +9,7 @@
 extern "C" {
 #include "ld_i2c_bus.h"
 #include "ld_i2c_dev.h"
+#include "led_types.h"
 }
 namespace ld {
 
@@ -42,6 +43,10 @@ namespace ld {
 #ifndef PCA9955B_AUTO_INC
 #define PCA9955B_AUTO_INC 0x80
 #endif
+
+static bool is_i2c_transport_error(esp_err_t err) {
+    return (err == ESP_ERR_TIMEOUT) || (err == ESP_FAIL) || (err == ESP_ERR_INVALID_STATE) || (err == ESP_ERR_INVALID_RESPONSE);
+}
 
 class Pca9955b {
   public:
@@ -201,14 +206,20 @@ class Pca9955b {
     }
 
     esp_err_t set_grb_n(const grb8_t* pixels, size_t pixel_n, uint8_t start_ch = 0) {
+        if(need_irefall_reassert_) {
+            ESP_RETURN_ON_ERROR(set_iref_all_global(255), TAG, "irefall reassert failed");
+            need_irefall_reassert_ = false;
+        }
+
         ESP_RETURN_ON_FALSE(pixels != nullptr, ESP_ERR_INVALID_ARG, TAG, "px is null");
 
         if(pixel_n == 0)
             return ESP_OK;
 
         const size_t nbytes = pixel_n * 3;
-        ESP_RETURN_ON_FALSE(start_ch < kChannels, ESP_ERR_INVALID_ARG, TAG, "start_ch out of range");
-        ESP_RETURN_ON_FALSE(start_ch + nbytes <= kChannels, ESP_ERR_INVALID_ARG, TAG, "range overflow");
+        ESP_RETURN_ON_FALSE(3 * start_ch < kChannels, ESP_ERR_INVALID_ARG, TAG, "start_ch out of range");
+        ESP_RETURN_ON_FALSE(3 * start_ch + nbytes <= kChannels, ESP_ERR_INVALID_ARG, TAG, "range overflow");
+        ESP_RETURN_ON_FALSE(nbytes <= 16, ESP_ERR_INVALID_SIZE, TAG, "buf too small");
 
         uint8_t buf[16];
         for(size_t i = 0; i < pixel_n; ++i) {
@@ -228,6 +239,7 @@ class Pca9955b {
     static constexpr const char* TAG = "Pca9955b";
 
     ld_i2c_dev_handle_t dev_ = nullptr;
+    bool need_irefall_reassert_ = false;
 };
 
 }  // namespace ld
