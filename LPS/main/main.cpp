@@ -33,6 +33,7 @@ void test_task(void *pvParameters) {
     }
     ESP_LOGI(TAG, "system INIT success");
 
+<<<<<<< HEAD
     //init SD Logger
     ret = sd_logger_init(log_path);
     if (ret != ESP_OK){
@@ -51,6 +52,25 @@ void test_task(void *pvParameters) {
         }
     }
     ESP_LOGI(TAG, "-------------------------");
+=======
+    cal_gamma_lut();
+    Player::getInstance().init();
+
+#if BT_ENABLE
+    nvs_flash_init();
+    bt_receiver_config_t rx_cfg = {
+        .feedback_gpio_num = -1,
+        .manufacturer_id = 0xFFFF,
+        .my_player_id = 1,
+        .sync_window_us = 500000,
+        .queue_size = 20,
+    };
+    bt_receiver_init(&rx_cfg);
+    bt_receiver_start();
+#else
+    console_test();
+#endif
+>>>>>>> origin/main
 
     //read frame to end
     table_frame_t current_frame;
@@ -97,6 +117,7 @@ void test_task(void *pvParameters) {
     vTaskDelete(NULL);
 }
 
+<<<<<<< HEAD
 extern "C" void app_main(void)
 {
     xTaskCreatePinnedToCore(
@@ -109,3 +130,8 @@ extern "C" void app_main(void)
         0
     );
 }
+=======
+extern "C" void app_main(void) {
+    xTaskCreate(app_task, "app_task", 16384, NULL, 5, NULL);
+}
+>>>>>>> origin/main

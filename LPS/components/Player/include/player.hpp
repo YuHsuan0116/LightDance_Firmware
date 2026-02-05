@@ -28,9 +28,9 @@ class Player {
 
     esp_err_t play();
     esp_err_t pause();
-    esp_err_t reset();
+    esp_err_t stop();
     esp_err_t release();
-    esp_err_t load();
+    // esp_err_t load();
     esp_err_t test(uint8_t, uint8_t, uint8_t);
     esp_err_t exit();
 
@@ -52,6 +52,11 @@ class Player {
         PAUSE,
         TEST,
     };
+    struct {
+        uint8_t r;
+        uint8_t g;
+        uint8_t b;
+    } m_test_color; // for TEST state
 
     const char* getStateName(PlayerState state);
     void switchState(PlayerState newState);  //  enter/exit
