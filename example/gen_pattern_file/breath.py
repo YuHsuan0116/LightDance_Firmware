@@ -6,7 +6,7 @@ OF_channel = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # OF 20-29
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0   # OF 30-39
 ]
-Strip_channel = [50, 50, 50, 50, 0, 0, 0, 0]  # Strip 0-7的LED數量
+Strip_channel = [5, 0, 0, 0, 0, 0, 0, 0]  # Strip 0-7的LED數量
 
 VERSION_MAJOR = 1
 VERSION_MINOR = 5

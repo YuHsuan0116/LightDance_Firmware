@@ -72,12 +72,11 @@ def read_control_file(filename):
         frame_num = struct.unpack('<I', file.read(4))[0]
         print(f"\nframe_num: {frame_num}")
         
-        print("time_stamp (first 5):")
         timestamps = []
-        for i in range(min(5, frame_num)):
+        for i in range(frame_num):
             timestamp = struct.unpack('<I', file.read(4))[0]
             timestamps.append(timestamp)
-            print(f"  {timestamp}")
+            print(f"  {timestamp}", end = ' ')
         
         return version, of_channel, strip_channel, frame_num
 
