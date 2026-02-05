@@ -74,9 +74,14 @@ def read_control_file(filename):
         
         timestamps = []
         for i in range(frame_num):
-            timestamp = struct.unpack('<I', file.read(4))[0]
-            timestamps.append(timestamp)
-            print(f"  {timestamp}", end = ' ')
+            timestamp_bytes = file.read(4)
+            if len(timestamp_bytes) == 4:  # 檢查是否讀到4個字節
+                timestamp = struct.unpack('<I', timestamp_bytes)[0]
+                timestamps.append(timestamp)
+                print(f"  {timestamp}")
+            else:
+                print(f"  ERROR: incomplete timestamp at frame {i}")
+                break
         
         return version, of_channel, strip_channel, frame_num
 
