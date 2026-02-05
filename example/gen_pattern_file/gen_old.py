@@ -1,25 +1,74 @@
 import struct
 import sys
 
-OF_NUM = 0
-STRIP_NUM = 1
-VERSION_MAJOR = 1
-VERSION_MINOR = 5
-FRAME_NUM = 100
-LED_num_array = [50]
-#範例版本1.3，有10條光纖，5條燈條上面有{5, 10, 15, 20, 25}顆LED，總共30個frame
+COLOR_MAP = {
+    'g': (255, 0, 0),
+    'r': (0, 255, 0),
+    'b': (0, 0, 255),
+    'rg': (255, 255, 0),
+    'gb': (255, 0, 255),
+    'rb': (0, 255, 255),
+    'w': (255, 255, 255)
+}
+
+def parse_color_input(color_str):
+    color_str = color_str.lower().strip()
+    if color_str not in COLOR_MAP:
+        raise ValueError(f"choose: {', '.join(COLOR_MAP.keys())}")
+    return COLOR_MAP[color_str]
 
 def calculate_checksum(frame_data):
-    #計算checksum=所有byte的和 mod 2^32
     return sum(frame_data) & 0xFFFFFFFF
 
+def get_user_input():
+    OF_NUM = int(input("num of OF: "))
+    STRIP_NUM = int(input("num of Strip: "))
+    
+    LED_num_array = []
+    for i in range(STRIP_NUM):
+        led_num = int(input(f"total LED of Strip {i+1}: "))
+        LED_num_array.append(led_num)
+    
+    color_input = input("color (g/r/b/rg/gb/rb/w): ").strip()
+    color = parse_color_input(color_input)
+    
+    fade = int(input("fade (0 or 1): ") or "1")
+    time_interval = int(input("time interval of each frame: "))
+    FRAME_NUM = int(input("total frame_num: "))
+    
+    VERSION_MAJOR = 1
+    VERSION_MINOR = 5
+    
+    return {
+        'OF_NUM': OF_NUM,
+        'STRIP_NUM': STRIP_NUM,
+        'LED_num_array': LED_num_array,
+        'color': color,
+        'fade': fade,
+        'time_interval': time_interval,
+        'FRAME_NUM': FRAME_NUM,
+        'VERSION_MAJOR': VERSION_MAJOR,
+        'VERSION_MINOR': VERSION_MINOR
+    }
+
 def main():
+    params = get_user_input()
+    
+    OF_NUM = params['OF_NUM']
+    STRIP_NUM = params['STRIP_NUM']
+    LED_num_array = params['LED_num_array']
+    color = params['color']
+    fade = params['fade']
+    time_interval = params['time_interval']
+    FRAME_NUM = params['FRAME_NUM']
+    VERSION_MAJOR = params['VERSION_MAJOR']
+    VERSION_MINOR = params['VERSION_MINOR']
+    
     total_leds = sum(LED_num_array)
     
-    frame_size_without_checksum = 4+1+(OF_NUM *3)+(total_leds *3)
-    frame_size_with_checksum = frame_size_without_checksum+4
+    frame_size_without_checksum = 4 + 1 + (OF_NUM * 3) + (total_leds * 3)
+    frame_size_with_checksum = frame_size_without_checksum + 4
     
-    #1.生control.dat
     with open("control.dat", "wb") as control_file:
         control_file.write(struct.pack('<BB', VERSION_MAJOR, VERSION_MINOR))
         control_file.write(struct.pack('<B', OF_NUM))
@@ -31,50 +80,66 @@ def main():
         control_file.write(struct.pack('<I', FRAME_NUM))
         
         for k in range(FRAME_NUM):
-            timestamp = k * 100
+            timestamp = k * time_interval
             control_file.write(struct.pack('<I', timestamp))
-            # 範例第k frame的timestamp是 100*k
     
-    print("control.dat finish")
+    print("\ncontrol.dat generate done")
     
-    #2.生frame.dat
     with open("frame.dat", "wb") as frame_file:
         frame_file.write(struct.pack('<BB', VERSION_MAJOR, VERSION_MINOR))
     
         for k in range(FRAME_NUM):
             frame_data = bytearray()
-            start_time = k * 1000
+            start_time = k * time_interval
             frame_data.extend(struct.pack('<I', start_time))
-            fade = 1
             frame_data.append(fade)
-            
-            # 範例第k frame的OF GRB生成邏輯是: OF[i].G/R/B = (i+1/2/3 + k) mod 255
-            for i in range(OF_NUM):
-                # G, R, B 各 1 byte
-                frame_data.append((i + 1 + k) % 255)  # G
-                frame_data.append((i + 2 + k) % 255)  # R
-                frame_data.append((i + 3 + k) % 255)  # B
-            
-            # 範例第k frame的LED GRB生成邏輯是: LED[i][j].G/R/B = ((i*10+j) + 1/2/3 + k) mod 255
-            for i in range(STRIP_NUM):
-                for j in range(LED_num_array[i]):
-                    base = i * 10 + j
-                    frame_data.append((base + 1 + k) % 255)  # G
-                    frame_data.append((base + 2 + k) % 255)  # R
-                    frame_data.append((base + 3 + k) % 255)  # B
+
+            if k % 2 == 1:
+                for i in range(OF_NUM):
+                    frame_data.append(color[0])  # G
+                    frame_data.append(color[1])  # R
+                    frame_data.append(color[2])  # B
+                
+                for i in range(STRIP_NUM):
+                    for j in range(LED_num_array[i]):
+                        frame_data.append(color[0])  # G
+                        frame_data.append(color[1])  # R
+                        frame_data.append(color[2])  # B
+            else:
+
+                for i in range(OF_NUM):
+                    frame_data.append(0)  # G
+                    frame_data.append(0)  # R
+                    frame_data.append(0)  # B
+                
+                for i in range(STRIP_NUM):
+                    for j in range(LED_num_array[i]):
+                        frame_data.append(0)  # G
+                        frame_data.append(0)  # R
+                        frame_data.append(0)  # B
             
             checksum = calculate_checksum(frame_data)
             frame_file.write(frame_data)
             frame_file.write(struct.pack('<I', checksum))
     
-    print("\nframe.dat finish")
+    print("\nframe.dat  generate done")
+
+    print("=" * 50)
+    print("parameter:")
     print(f"OF_num: {OF_NUM}")
     print(f"Strip_num: {STRIP_NUM}")
-    print(f"LED_num: {' '.join(map(str, LED_num_array))}")
+    print(f"total LED on each Strip: {' '.join(map(str, LED_num_array))}")
     print(f"total LED: {total_leds}")
-    print(f"Version: {VERSION_MAJOR}.{VERSION_MINOR}")
-    print(f"Frame_num: {FRAME_NUM}")
-    print(f"frame_size with checksum: {frame_size_with_checksum} byte\n")
+    print(f"color (G,R,B): {color}")
+    print(f"time interval: {time_interval}")
+    print(f"total frame_num: {FRAME_NUM}")
+    print(f"version: {VERSION_MAJOR}.{VERSION_MINOR}")
+    print(f"size of a frame with checksum): {frame_size_with_checksum} byte")
+    print("=" * 50)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except ValueError as e:
+        print(f"input error: {e}")
+        sys.exit(1)
