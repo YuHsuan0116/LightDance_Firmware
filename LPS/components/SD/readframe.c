@@ -11,6 +11,7 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "table_frame.h"
+#include "sdmmc_cmd.h"
 
 static const char* TAG = "readframe";
 
@@ -35,12 +36,13 @@ typedef enum {
     CMD_SEEK,
 } sd_cmd_t;
 
-static sd_cmd_t cmd = CMD_NONE;
-static uint32_t seek_idx = 0;
-
 #include "driver/sdmmc_host.h"
 #include "esp_vfs_fat.h"
 #include "sdmmc_cmd.h"
+
+static sd_cmd_t cmd = CMD_NONE;
+static uint32_t seek_idx = 0;
+static sdmmc_card_t* g_sd_card = NULL;
 
 static esp_err_t mount_sdcard(void) {
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -67,7 +69,7 @@ static esp_err_t mount_sdcard(void) {
         ESP_LOGE(TAG, "SD mount failed (%s)", esp_err_to_name(ret));
         return ret;
     }
-
+    g_sd_card = card;
     return ESP_OK;
 }
 
@@ -119,6 +121,22 @@ static uint32_t find_idx_by_ts(uint64_t ts) {
         }
     }
     return ans;
+}
+
+const char* get_sd_card_id(void) {
+    if (g_sd_card == NULL) {
+        return "SD card not mounted";
+    }
+    
+    static char card_id[33];  // 32 chars + null terminator
+    
+    snprintf(card_id, sizeof(card_id), 
+             "%02X%04X%08X",
+             g_sd_card->cid.mfg_id,
+             g_sd_card->cid.oem_id,
+             g_sd_card->cid.serial);
+    
+    return card_id;
 }
 
 /* ================= SD reader task ================= */
@@ -223,6 +241,8 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
 
     /* 4. create SD task */
     xTaskCreate(sd_reader_task, "sd_reader", 16384, NULL, 5, &sd_task);
+
+    ESP_LOGI(TAG, "Card ID: %s", get_sd_card_id());
 
     inited = true;
     ESP_LOGI(TAG, "frame system initialized (single buffer)");

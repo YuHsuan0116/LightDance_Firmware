@@ -1,3 +1,3 @@
-idf_component_register(SRCS "sd_logger.c" "frame_config.c" "control_reader.c" "frame_reader.c" "readframe.c" 
+idf_component_register(SRCS "test.cpp" "sd_logger.c" "frame_config.c" "control_reader.c" "frame_reader.c" "readframe.c" 
                     INCLUDE_DIRS "."
                     REQUIRES Player fatfs common)
