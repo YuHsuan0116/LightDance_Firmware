@@ -19,7 +19,7 @@ class FrameBuffer {
     esp_err_t reset();
     esp_err_t deinit();
 
-    void compute(uint64_t time_ms);
+    void compute(uint64_t time_ms, bool is_test);
 
     void print_buffer();
     frame_data* get_buffer();

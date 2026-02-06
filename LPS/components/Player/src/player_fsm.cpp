@@ -64,13 +64,13 @@ void Player::switchState(PlayerState newState) {
             ESP_LOGI("state.cpp", "Enter Unloaded!");
 #endif
             if(releaseResources() == ESP_OK) {
-                ESP_LOGI(TAG, "resources released");  
+                ESP_LOGI(TAG, "resources released");
             } else {
                 ESP_LOGE(TAG, "resources release failed");
             }
             Event e;
             e.type = EVENT_LOAD;
-            sendEvent(e); 
+            sendEvent(e);
         } break;
 
         case PlayerState::READY: {
@@ -103,7 +103,8 @@ void Player::switchState(PlayerState newState) {
 #if SHOW_TRANSITION
             ESP_LOGI("state.cpp", "Enter Test!");
 #endif
-            testPlayback(m_test_color.r, m_test_color.g, m_test_color.b);
+            resetPlayback();
+            testPlayback();
         } break;
 
         default:
@@ -120,15 +121,14 @@ void Player::processEvent(Event& e) {
             if(e.type == EVENT_LOAD) {
                 if(acquireResources() == ESP_OK)
                     switchState(PlayerState::READY);
-                else{
+                else {
                     ESP_LOGE(TAG, "resource acquire failed");
                     vTaskDelay(pdMS_TO_TICKS(1000));
                     Event e;
                     e.type = EVENT_LOAD;
-                    sendEvent(e);                
+                    sendEvent(e);
                 }
-            }
-            else
+            } else
                 ESP_LOGW(TAG, "UnloadedState: ignoring event %s", getEventName(e.type));
             break;
 
@@ -138,7 +138,11 @@ void Player::processEvent(Event& e) {
             else if(e.type == EVENT_RELEASE)
                 switchState(PlayerState::UNLOADED);
             else if(e.type == EVENT_TEST) {
-                m_test_color = {e.test_data.r, e.test_data.g, e.test_data.b};
+                m_test_color.mode = (Player::TestMode)e.test_data.mode;
+                m_test_color.r = e.test_data.r;
+                m_test_color.g = e.test_data.g;
+                m_test_color.b = e.test_data.b;
+
                 switchState(PlayerState::TEST);
             } else
                 ESP_LOGW(TAG, "ReadyState: ignoring event %s", getEventName(e.type));
@@ -168,15 +172,16 @@ void Player::processEvent(Event& e) {
 
         case PlayerState::TEST:
             if(e.type == EVENT_TEST) {
-                m_test_color = {e.test_data.r, e.test_data.g, e.test_data.b};
-                testPlayback(m_test_color.r, m_test_color.g, m_test_color.b);
-            } 
-            else if(e.type == EVENT_STOP)
+                m_test_color.mode = (Player::TestMode)e.test_data.mode;
+                m_test_color.r = e.test_data.r;
+                m_test_color.g = e.test_data.g;
+                m_test_color.b = e.test_data.b;
+                switchState(PlayerState::TEST);
+            } else if(e.type == EVENT_STOP)
                 switchState(PlayerState::READY);
             else if(e.type == EVENT_RELEASE) {
                 switchState(PlayerState::UNLOADED);
-            }
-            else
+            } else
                 ESP_LOGW(TAG, "TestState: ignoring event %s", getEventName(e.type));
             break;
     }
@@ -190,5 +195,11 @@ void Player::updateState() {
         ESP_LOGI("state.cpp", "Update!");
 #endif
         updatePlayback();
+    }
+    if(m_state == PlayerState::TEST) {
+#if SHOW_TRANSITION
+        ESP_LOGI("state.cpp", "Update!");
+#endif
+        updatePlayback(true);
     }
 }

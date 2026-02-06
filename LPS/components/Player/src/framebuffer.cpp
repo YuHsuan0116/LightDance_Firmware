@@ -66,7 +66,33 @@ esp_err_t FrameBuffer::deinit() {
     return ESP_OK;
 }
 
-void FrameBuffer::compute(uint64_t time_ms) {
+void FrameBuffer::compute(uint64_t time_ms, bool is_test = false) {
+    if(is_test) {
+        uint16_t h_cal = ((uint64_t)time_ms * 1535 + 5999 / 2) / 5999;
+        grb8_t color = hsv_to_grb_u8(hsv8(h_cal, 255, 255));
+
+        for(int ch = 0; ch < WS2812B_NUM; ch++) {
+            int len = ch_info.rmt_strips[ch];
+            if(len < 0)
+                len = 0;
+            if(len > WS2812B_MAX_PIXEL_NUM)
+                len = WS2812B_MAX_PIXEL_NUM;
+
+            for(int i = 0; i < len; i++) {
+                buffer.ws2812b[ch][i] = grb_gamma_u8(color, GAMMA_SET_LED);
+            }
+            for(int i = len; i < WS2812B_MAX_PIXEL_NUM; i++) {
+                buffer.ws2812b[ch][i] = {0, 0, 0};
+            }
+        }
+
+        for(int ch = 0; ch < PCA9955B_CH_NUM; ch++) {
+            buffer.pca9955b[ch] = grb_gamma_u8(color, GAMMA_SET_OF);
+        }
+
+        return;
+    }
+
     if(current == nullptr || next == nullptr) {
         ESP_LOGE(TAG, "FrameBuffer not initialized");
         return;

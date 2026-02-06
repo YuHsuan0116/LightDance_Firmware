@@ -31,22 +31,28 @@ esp_err_t LedController::init() {
 
     // 4. Initialize WS2812B Strips
     for(int i = 0; i < WS2812B_NUM; i++) {
+#if LD_IGNORE_DRIVER_INIT_FAIL
         ws2812b_init(&ws2812b_devs[i], BOARD_HW_CONFIG.rmt_pins[i], ch_info.rmt_strips[i]);
-        // ESP_GOTO_ON_ERROR(ws2812b_init(&ws2812b_devs[i], BOARD_HW_CONFIG.rmt_pins[i], ch_info.rmt_strips[i]), err, TAG, "Failed to init WS2812B[%d]", i);
+#else
+        ESP_GOTO_ON_ERROR(ws2812b_init(&ws2812b_devs[i], BOARD_HW_CONFIG.rmt_pins[i], ch_info.rmt_strips[i]), err, TAG, "Failed to init WS2812B[%d]", i);
+#endif
     }
 
     // 5. Initialize PCA9955B Chips
     for(int i = 0; i < PCA9955B_NUM; i++) {
+#if LD_IGNORE_DRIVER_INIT_FAIL
         pca9955b_init(&pca9955b_devs[i], BOARD_HW_CONFIG.i2c_addrs[i], bus_handle);
-        // esp_err_t probe_ret = i2c_master_probe(bus_handle, BOARD_HW_CONFIG.i2c_addrs[i], 100);
-        // if(probe_ret == ESP_OK) {
-        //     pca_enable[i] = true;
-        //     ESP_GOTO_ON_ERROR(pca9955b_init(&pca9955b_devs[i], BOARD_HW_CONFIG.i2c_addrs[i], bus_handle), err, TAG, "Failed to init PCA9955B[%d]", i);
-        // } else {
-        //     ESP_LOGE(TAG, "Fail to find device at address 0x%02x", BOARD_HW_CONFIG.i2c_addrs[i]);
-        //     ret = probe_ret;
-        //     goto err;
-        // }
+#else
+        esp_err_t probe_ret = i2c_master_probe(bus_handle, BOARD_HW_CONFIG.i2c_addrs[i], 100);
+        if(probe_ret == ESP_OK) {
+            pca_enable[i] = true;
+            ESP_GOTO_ON_ERROR(pca9955b_init(&pca9955b_devs[i], BOARD_HW_CONFIG.i2c_addrs[i], bus_handle), err, TAG, "Failed to init PCA9955B[%d]", i);
+        } else {
+            ESP_LOGE(TAG, "Fail to find device at address 0x%02x", BOARD_HW_CONFIG.i2c_addrs[i]);
+            ret = probe_ret;
+            goto err;
+        }
+#endif
     }
 
     ESP_LOGI(TAG, "LedController initialized successfully");

@@ -52,6 +52,11 @@ static int cmd_exit(int argc, char** argv) {
 }
 
 static int cmd_test(int argc, char** argv) {
+    if(argc == 1) {
+        Player::getInstance().test();
+        return 0;
+    }
+
     if(argc < 4) {
         printf("Usage: test <r> <g> <b>\n");
         return 1;
