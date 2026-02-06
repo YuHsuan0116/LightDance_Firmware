@@ -10,6 +10,7 @@
 #include "readframe.h"
 
 static const char* TAG = "APP";
+static bool frame_sys_ready = false;
 
 static void app_task(void* arg) {
     // (void)arg;
@@ -18,12 +19,15 @@ static void app_task(void* arg) {
 #if SD_ENABLE
     esp_err_t err = frame_system_init("0:/control.dat", "0:/frame.dat");
     ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(err));
-    ESP_LOGI(TAG, "HWM after frame_system_init=%u", uxTaskGetStackHighWaterMark(NULL));
+    ESP_LOGI(TAG, "HWM after frame_system_init=%u",
+             uxTaskGetStackHighWaterMark(NULL));
 
-    if(err != ESP_OK) {
-        ESP_LOGE(TAG, "init failed, stop here");
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "frame system init failed, halt");
         vTaskDelay(portMAX_DELAY);
     }
+
+    frame_sys_ready = true;
 #endif
 
     // console_test();  // 進入 REPL（通常不會 return）

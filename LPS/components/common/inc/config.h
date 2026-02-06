@@ -1,6 +1,6 @@
 #pragma once
 
-#define SD_ENABLE 0
+#define SD_ENABLE 1
 #define BT_ENABLE 0
 
 #define I2C_FREQ 400000
