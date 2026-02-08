@@ -34,7 +34,7 @@ uint8_t GAMMA_LED_R_lut[256];
 uint8_t GAMMA_LED_G_lut[256];
 uint8_t GAMMA_LED_B_lut[256];
 
-void cal_gamma_lut() {
+void calc_gamma_lut() {
     for(int i = 0; i < 256; i++) {
         uint8_t x = (uint8_t)i;
 

@@ -166,24 +166,37 @@ inline grb8_t grb_lerp_u8(grb8_t start, grb8_t end, uint8_t t) {
     return out;
 }
 
-inline grb8_t grb_gamma_u8(grb8_t in, gamma_set_t set) {
+inline grb8_t grb_gamma_u8(grb8_t in, led_type_t type) {
+
     grb8_t out;
-    switch(set) {
-        case GAMMA_SET_LED:
+    switch(type) {
+        case LED_WS2812B:
             out.r = GAMMA_LED_R_lut[in.r];
-            out.r = mul255_u8(out.r, LED_MAX_BRIGHTNESS);
             out.g = GAMMA_LED_G_lut[in.g];
-            out.g = mul255_u8(out.g, LED_MAX_BRIGHTNESS);
             out.b = GAMMA_LED_B_lut[in.b];
-            out.b = mul255_u8(out.b, LED_MAX_BRIGHTNESS);
             return out;
-        case GAMMA_SET_OF:
+        case LED_PCA9955B:
             out.r = GAMMA_OF_R_lut[in.r];
-            out.r = mul255_u8(out.r, OF_MAX_BRIGHTNESS_R);
             out.g = GAMMA_OF_G_lut[in.g];
-            out.g = mul255_u8(out.g, OF_MAX_BRIGHTNESS_G);
             out.b = GAMMA_OF_B_lut[in.b];
-            out.b = mul255_u8(out.b, OF_MAX_BRIGHTNESS_B);
+            return out;
+        default:
+            return GRB_BLACK;
+    }
+}
+
+inline grb8_t grb_set_brightness(grb8_t in, led_type_t type) {
+    grb8_t out;
+    switch(type) {
+        case LED_WS2812B:
+            out.r = mul255_u8(in.r, LED_MAX_BRIGHTNESS);
+            out.g = mul255_u8(in.g, LED_MAX_BRIGHTNESS);
+            out.b = mul255_u8(in.b, LED_MAX_BRIGHTNESS);
+            return out;
+        case LED_PCA9955B:
+            out.r = mul255_u8(in.r, OF_MAX_BRIGHTNESS_R);
+            out.g = mul255_u8(in.g, OF_MAX_BRIGHTNESS_G);
+            out.b = mul255_u8(in.b, OF_MAX_BRIGHTNESS_B);
             return out;
         default:
             return GRB_BLACK;

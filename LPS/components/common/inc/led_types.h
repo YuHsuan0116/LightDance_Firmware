@@ -11,6 +11,11 @@ typedef struct {
     uint8_t s, v;
 } hsv8_t;
 
+typedef enum {
+    LED_WS2812B = 0,
+    LED_PCA9955B,
+} led_type_t;
+
 static const grb8_t GRB_BLACK = {.g = 0, .r = 0, .b = 0};
 static const grb8_t GRB_WHITE = {.g = 255, .r = 255, .b = 255};
 
