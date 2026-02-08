@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "ld_board.h"
 
 /*
  * Channel layout information for player / driver
