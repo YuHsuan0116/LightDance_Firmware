@@ -9,10 +9,17 @@ static const char* TAG = "fb";
 
 static int count = 0;
 
-void swap(table_frame_t*& a, table_frame_t*& b) {
-    table_frame_t* tmp = a;
-    a = b;
-    b = tmp;
+// p = 0..255
+static inline uint8_t calc_lerp_p(uint64_t time_ms, const uint64_t t1, const uint64_t t2) {
+
+    if(t2 <= t1)
+        return 255;
+    if(time_ms >= t2)
+        return 255;
+
+    const uint64_t dt = time_ms - t1;
+    const uint64_t dur = t2 - t1;
+    return (uint8_t)((dt * 255) / dur);
 }
 
 FrameBuffer::FrameBuffer() {
@@ -67,92 +74,107 @@ esp_err_t FrameBuffer::deinit() {
 }
 
 void FrameBuffer::compute(uint64_t time_ms, bool is_test = false) {
+
     if(is_test) {
         uint16_t h_cal = ((uint64_t)time_ms * 1535 + 5999 / 2) / 5999;
         grb8_t color = hsv_to_grb_u8(hsv8(h_cal, 255, 255));
-
-        for(int ch = 0; ch < WS2812B_NUM; ch++) {
-            int len = ch_info.rmt_strips[ch];
-            if(len < 0)
-                len = 0;
-            if(len > WS2812B_MAX_PIXEL_NUM)
-                len = WS2812B_MAX_PIXEL_NUM;
-
-            for(int i = 0; i < len; i++) {
-                buffer.ws2812b[ch][i] = grb_gamma_u8(color, GAMMA_SET_LED);
-            }
-            for(int i = len; i < WS2812B_MAX_PIXEL_NUM; i++) {
-                buffer.ws2812b[ch][i] = {0, 0, 0};
-            }
-        }
-
-        for(int ch = 0; ch < PCA9955B_CH_NUM; ch++) {
-            buffer.pca9955b[ch] = grb_gamma_u8(color, GAMMA_SET_OF);
-        }
+        fill(color);
+        gamma_correction();
+        brightness_correction();
 
         return;
     }
 
+    if(!handle_frames(time_ms)) {
+        return;
+    }
+
+    uint8_t p = (current->fade) ? calc_lerp_p(time_ms, current->timestamp, next->timestamp) : 0;
+
+    lerp(p);
+    gamma_correction();
+    brightness_correction();
+
+    return;
+}
+
+void FrameBuffer::fill(grb8_t color) {
+    for(int ch = 0; ch < WS2812B_NUM; ch++) {
+        for(int i = 0; i < WS2812B_MAX_PIXEL_NUM; i++) {
+            buffer.ws2812b[ch][i] = color;
+        }
+    }
+
+    for(int ch = 0; ch < PCA9955B_CH_NUM; ch++) {
+        buffer.pca9955b[ch] = color;
+    }
+
+    return;
+}
+
+bool FrameBuffer::handle_frames(uint64_t time_ms) {
     if(current == nullptr || next == nullptr) {
         ESP_LOGE(TAG, "FrameBuffer not initialized");
-        return;
+        return false;
     }
 
     if(time_ms < current->timestamp) {
         buffer = current->data;
-        return;
+        return false;
     }
 
     while(time_ms >= next->timestamp) {
         std::swap(current, next);
+
 #if SD_ENABLE
         read_frame(next);
 #else
         test_read_frame(next);
 #endif
+
         if(next->timestamp <= current->timestamp) {
             ESP_LOGE(TAG, "Non-monotonic timestamp: current=%" PRIu64 ", next=%" PRIu64, current->timestamp, next->timestamp);
             buffer = current->data;
-            return;
+            return false;
         }
     }
 
-    uint8_t p = 0;
+    return true;
+}
 
-    const uint64_t t1 = current->timestamp;
-    const uint64_t t2 = next->timestamp;
-
-    if(current->fade) {
-        if(t2 <= t1) {
-            p = 255;
-        } else if(time_ms >= t2) {
-            p = 255;
-        } else {
-            const uint64_t dt = time_ms - t1;
-            const uint64_t dur = t2 - t1;
-            p = (uint8_t)((dt * 255) / dur);
-        }
-    } else {
-        p = (time_ms >= t2) ? 255 : 0;
-    }
-
+void FrameBuffer::lerp(uint8_t p) {
     for(int ch = 0; ch < WS2812B_NUM; ch++) {
-        int len = ch_info.rmt_strips[ch];
-        if(len < 0)
-            len = 0;
-        if(len > WS2812B_MAX_PIXEL_NUM)
-            len = WS2812B_MAX_PIXEL_NUM;
-
-        for(int i = 0; i < len; i++) {
-            buffer.ws2812b[ch][i] = grb_gamma_u8(grb_lerp_hsv_u8(current->data.ws2812b[ch][i], next->data.ws2812b[ch][i], p), GAMMA_SET_LED);
-        }
-        for(int i = len; i < WS2812B_MAX_PIXEL_NUM; i++) {
-            buffer.ws2812b[ch][i] = {0, 0, 0};
+        for(int i = 0; i < WS2812B_MAX_PIXEL_NUM; i++) {
+            buffer.ws2812b[ch][i] = grb_lerp_hsv_u8(current->data.ws2812b[ch][i], next->data.ws2812b[ch][i], p);
         }
     }
 
     for(int ch = 0; ch < PCA9955B_CH_NUM; ch++) {
-        buffer.pca9955b[ch] = grb_gamma_u8(grb_lerp_hsv_u8(current->data.pca9955b[ch], next->data.pca9955b[ch], p), GAMMA_SET_OF);
+        buffer.pca9955b[ch] = grb_lerp_hsv_u8(current->data.pca9955b[ch], next->data.pca9955b[ch], p);
+    }
+}
+
+void FrameBuffer::gamma_correction() {
+    for(int ch = 0; ch < WS2812B_NUM; ch++) {
+        for(int i = 0; i < WS2812B_MAX_PIXEL_NUM; i++) {
+            buffer.ws2812b[ch][i] = grb_gamma_u8(buffer.ws2812b[ch][i], LED_WS2812B);
+        }
+    }
+
+    for(int ch = 0; ch < PCA9955B_CH_NUM; ch++) {
+        buffer.pca9955b[ch] = grb_gamma_u8(buffer.pca9955b[ch], LED_PCA9955B);
+    }
+}
+
+void FrameBuffer::brightness_correction() {
+    for(int ch = 0; ch < WS2812B_NUM; ch++) {
+        for(int i = 0; i < WS2812B_MAX_PIXEL_NUM; i++) {
+            buffer.ws2812b[ch][i] = grb_set_brightness(buffer.ws2812b[ch][i], LED_WS2812B);
+        }
+    }
+
+    for(int ch = 0; ch < PCA9955B_CH_NUM; ch++) {
+        buffer.pca9955b[ch] = grb_set_brightness(buffer.pca9955b[ch], LED_PCA9955B);
     }
 }
 

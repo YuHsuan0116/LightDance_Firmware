@@ -21,6 +21,13 @@ class FrameBuffer {
 
     void compute(uint64_t time_ms, bool is_test);
 
+    void fill(grb8_t color);
+
+    bool handle_frames(uint64_t time_ms);
+    void lerp(uint8_t p);
+    void gamma_correction();
+    void brightness_correction();
+
     void print_buffer();
     frame_data* get_buffer();
 
