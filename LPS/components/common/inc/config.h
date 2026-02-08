@@ -1,6 +1,7 @@
 #pragma once
 
 #define SD_ENABLE 1
+<<<<<<< HEAD
 #define BT_ENABLE 1
 
 #define OF_MAX_BRIGHTNESS_R 210
@@ -8,6 +9,9 @@
 #define OF_MAX_BRIGHTNESS_B 255
 
 #define LED_MAX_BRIGHTNESS 50
+=======
+#define BT_ENABLE 0
+>>>>>>> origin/Shuo_pt
 
 #define I2C_FREQ 400000
 #define I2C_TIMEOUT_MS 2
