@@ -104,7 +104,7 @@ void Player::switchState(PlayerState newState) {
             ESP_LOGI("state.cpp", "Enter Test!");
 #endif
             resetPlayback();
-            testPlayback();
+            testPlayback(m_test_data);
         } break;
 
         default:
@@ -138,10 +138,7 @@ void Player::processEvent(Event& e) {
             else if(e.type == EVENT_RELEASE)
                 switchState(PlayerState::UNLOADED);
             else if(e.type == EVENT_TEST) {
-                m_test_color.mode = (Player::TestMode)e.test_data.mode;
-                m_test_color.r = e.test_data.r;
-                m_test_color.g = e.test_data.g;
-                m_test_color.b = e.test_data.b;
+                m_test_data = e.test_data;
 
                 switchState(PlayerState::TEST);
             } else
@@ -172,10 +169,7 @@ void Player::processEvent(Event& e) {
 
         case PlayerState::TEST:
             if(e.type == EVENT_TEST) {
-                m_test_color.mode = (Player::TestMode)e.test_data.mode;
-                m_test_color.r = e.test_data.r;
-                m_test_color.g = e.test_data.g;
-                m_test_color.b = e.test_data.b;
+                m_test_data = e.test_data;
                 switchState(PlayerState::TEST);
             } else if(e.type == EVENT_STOP)
                 switchState(PlayerState::READY);
@@ -200,6 +194,6 @@ void Player::updateState() {
 #if SHOW_TRANSITION
         ESP_LOGI("state.cpp", "Update!");
 #endif
-        updatePlayback(true);
+        updatePlayback();
     }
 }

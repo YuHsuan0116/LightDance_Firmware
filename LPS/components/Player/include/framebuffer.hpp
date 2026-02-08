@@ -10,6 +10,12 @@
 
 #include "player_protocal.h"
 
+enum class FbTestMode : uint8_t {
+    OFF = 0,
+    SOLID,
+    BREATH,
+};
+
 class FrameBuffer {
   public:
     FrameBuffer();
@@ -19,25 +25,36 @@ class FrameBuffer {
     esp_err_t reset();
     esp_err_t deinit();
 
-    void compute(uint64_t time_ms, bool is_test);
+    void compute(uint64_t time_ms);
+
+    void set_test_mode(FbTestMode mode);
+    FbTestMode get_test_mode() const;
+
+    void set_test_color(grb8_t color);
+    grb8_t get_test_color() const;
 
     void fill(grb8_t color);
-
-    bool handle_frames(uint64_t time_ms);
-    void lerp(uint8_t p);
-    void gamma_correction();
-    void brightness_correction();
 
     void print_buffer();
     frame_data* get_buffer();
 
   private:
-    table_frame_t frame0, frame1;
+    bool handle_frames(uint64_t time_ms);
+    void lerp(uint8_t p);
+    void gamma_correction();
+    void brightness_correction();
+
+    table_frame_t frame0{}, frame1{};
 
     table_frame_t* current;
     table_frame_t* next;
 
     frame_data buffer;
+
+    FbTestMode test_mode_ = FbTestMode::OFF;
+    grb8_t test_color_ = {0, 0, 0};
+
+    grb8_t make_breath_color(uint64_t time_ms) const;
 };
 
 void test_read_frame(table_frame_t* p);

@@ -41,8 +41,8 @@ class Player {
     esp_err_t startPlayback();
     esp_err_t pausePlayback();
     esp_err_t resetPlayback();
-    esp_err_t updatePlayback(bool is_test = false);
-    esp_err_t testPlayback();
+    esp_err_t updatePlayback();
+    esp_err_t testPlayback(TestData);
 
     // ===== FSM =====
 
@@ -53,19 +53,6 @@ class Player {
         PAUSE,
         TEST,
     };
-
-    enum class TestMode {
-        SOLID_RGB = 0,
-        BREATH_RGB,
-    };
-
-    struct {
-        TestMode mode = TestMode::SOLID_RGB;
-
-        uint8_t r;
-        uint8_t g;
-        uint8_t b;
-    } m_test_color;  // for TEST state
 
     const char* getStateName(PlayerState state);
     void switchState(PlayerState newState);  //  enter/exit
@@ -93,6 +80,7 @@ class Player {
     // ===== FSM =====
 
     PlayerState m_state = PlayerState::UNLOADED;
+    TestData m_test_data = {};
 
     // ===== Resources =====
 

@@ -15,17 +15,23 @@ typedef enum {
     EVENT_EXIT,
 } event_t;
 
+typedef enum {
+    SOLID_RGB = 0,
+    BREATH_RGB,
+} TestMode;
+
+typedef struct {
+    TestMode mode;
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} TestData;
+
 struct Event {
     event_t type;
 
     union {
         uint32_t data;
-
-        struct {
-            uint8_t mode;
-            uint8_t r;
-            uint8_t g;
-            uint8_t b;
-        } test_data;
+        TestData test_data;
     };
 };

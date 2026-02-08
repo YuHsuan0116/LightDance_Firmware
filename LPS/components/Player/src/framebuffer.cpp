@@ -29,6 +29,8 @@ FrameBuffer::FrameBuffer() {
 FrameBuffer::~FrameBuffer() {}
 
 esp_err_t FrameBuffer::init() {
+    test_mode_ = FbTestMode::OFF;
+
     current = &frame0;
     next = &frame1;
 
@@ -49,6 +51,8 @@ esp_err_t FrameBuffer::init() {
 }
 
 esp_err_t FrameBuffer::reset() {
+    test_mode_ = FbTestMode::OFF;
+
     current = &frame0;
     next = &frame1;
 
@@ -73,18 +77,44 @@ esp_err_t FrameBuffer::deinit() {
     return ESP_OK;
 }
 
-void FrameBuffer::compute(uint64_t time_ms, bool is_test = false) {
+void FrameBuffer::set_test_mode(FbTestMode mode) {
+    test_mode_ = mode;
+}
 
-    if(is_test) {
-        uint16_t h_cal = ((uint64_t)time_ms * 1535 + 5999 / 2) / 5999;
-        grb8_t color = hsv_to_grb_u8(hsv8(h_cal, 255, 255));
-        fill(color);
+FbTestMode FrameBuffer::get_test_mode() const {
+    return test_mode_;
+}
+
+void FrameBuffer::set_test_color(grb8_t color) {
+    test_color_ = color;
+}
+
+grb8_t FrameBuffer::make_breath_color(uint64_t time_ms) const {
+    uint16_t h_cal = ((uint64_t)time_ms * 1535 + 5999 / 2) / 5999;
+    return hsv_to_grb_u8(hsv8(h_cal, 255, 255));
+}
+
+grb8_t FrameBuffer::get_test_color() const {
+    return test_color_;
+}
+
+void FrameBuffer::compute(uint64_t time_ms) {
+
+    // ---- Test path ----
+    if(test_mode_ != FbTestMode::OFF) {
+        grb8_t c = test_color_;
+        if(test_mode_ == FbTestMode::BREATH) {
+            c = make_breath_color(time_ms);
+        }
+        fill(c);
+
         gamma_correction();
         brightness_correction();
 
         return;
     }
 
+    // ---- Normal path ----
     if(!handle_frames(time_ms)) {
         return;
     }
@@ -92,6 +122,7 @@ void FrameBuffer::compute(uint64_t time_ms, bool is_test = false) {
     uint8_t p = (current->fade) ? calc_lerp_p(time_ms, current->timestamp, next->timestamp) : 0;
 
     lerp(p);
+
     gamma_correction();
     brightness_correction();
 

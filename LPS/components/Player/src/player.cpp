@@ -63,14 +63,14 @@ esp_err_t Player::release() {
 esp_err_t Player::test() {
     Event e{};
     e.type = EVENT_TEST;
-    e.test_data.mode = (uint8_t)Player::TestMode::BREATH_RGB;
+    e.test_data.mode = BREATH_RGB;
 
     return sendEvent(e);
 }
 esp_err_t Player::test(uint8_t r, uint8_t g, uint8_t b) {
     Event e{};
     e.type = EVENT_TEST;
-    e.test_data.mode = (uint8_t)Player::TestMode::SOLID_RGB;
+    e.test_data.mode = SOLID_RGB;
 
     e.test_data.r = r;
     e.test_data.g = g;
@@ -105,10 +105,10 @@ esp_err_t Player::resetPlayback() {
     return ESP_OK;
 }
 
-esp_err_t Player::updatePlayback(bool is_test) {
+esp_err_t Player::updatePlayback() {
     const uint64_t time_ms = clock.now_us() / 1000;
 
-    fb.compute(time_ms, is_test);
+    fb.compute(time_ms);
 
     frame_data* buf = fb.get_buffer();
 
@@ -126,14 +126,16 @@ esp_err_t Player::updatePlayback(bool is_test) {
     return ESP_OK;
 }
 
-esp_err_t Player::testPlayback() {
-    if(m_test_color.mode == TestMode::SOLID_RGB) {
-        controller.fill(m_test_color.r, m_test_color.g, m_test_color.b);
-        controller.show();
+esp_err_t Player::testPlayback(TestData data) {
+    if(data.mode == SOLID_RGB) {
+        fb.set_test_mode(FbTestMode::SOLID);
+        fb.set_test_color(grb8(data.r, data.g, data.b));
     }
-    if(m_test_color.mode == TestMode::BREATH_RGB) {
-        clock.start();
+    if(data.mode == BREATH_RGB) {
+        fb.set_test_mode(FbTestMode::BREATH);
     }
+
+    clock.start();
 
     return ESP_OK;
 }
