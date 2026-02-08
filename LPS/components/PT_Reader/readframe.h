@@ -45,8 +45,7 @@ extern ch_info_t ch_info_snapshot;
  *   - ESP_ERR_NO_MEM         semaphore / task 建立失敗
  *   - ESP_FAIL               其他錯誤
  */
-esp_err_t frame_system_init(const char *control_path,
-                            const char *frame_path);
+esp_err_t frame_system_init(const char* control_path, const char* frame_path);
 
 /**
  * @brief 讀取下一個 frame（blocking）
@@ -59,7 +58,7 @@ esp_err_t frame_system_init(const char *control_path,
  *   - ESP_ERR_INVALID_ARG   out 為 NULL
  *   - ESP_ERR_NOT_FOUND     EOF（沒有 frame 了）
  */
-esp_err_t read_frame(table_frame_t *out);
+esp_err_t read_frame(table_frame_t* out);
 
 /**
  * @brief 重置播放位置到 frame 0

@@ -20,24 +20,23 @@ static void app_task(void* arg) {
 #if SD_ENABLE
     esp_err_t sd_err = frame_system_init("0:/control.dat", "0:/frame.dat");
     ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(sd_err));
-    ESP_LOGI(TAG, "HWM after frame_system_init=%u",
-             uxTaskGetStackHighWaterMark(NULL));
+    ESP_LOGI(TAG, "HWM after frame_system_init=%u", uxTaskGetStackHighWaterMark(NULL));
 
-    if (sd_err != ESP_OK) {
+    if(sd_err != ESP_OK) {
         ESP_LOGE(TAG, "frame system init failed, halt");
         vTaskDelay(portMAX_DELAY);
         frame_sys_ready = false;
-    }
-
-    else{
+    } else {
         frame_sys_ready = true;
-    
+
+#if LOGGER_ENABLE
         esp_err_t log_err = sd_logger_init("/sd/LOGGER.log");
-        if (log_err != ESP_OK) {
+        if(log_err != ESP_OK) {
             ESP_LOGE(TAG, "SD Logger init failed: %s", esp_err_to_name(log_err));
         }
+#endif
     }
-    
+
 #endif
 
     calc_gamma_lut();

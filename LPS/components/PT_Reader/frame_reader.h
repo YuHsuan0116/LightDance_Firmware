@@ -1,7 +1,7 @@
 #pragma once
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include "esp_err.h"
 #include "frame.h"
 
@@ -36,7 +36,7 @@ extern "C" {
  *   - ESP_ERR_INVALID_SIZE  frame size 超過系統上限
  *   - ESP_FAIL              其他 I/O 錯誤
  */
-esp_err_t frame_reader_init(const char *path);
+esp_err_t frame_reader_init(const char* path);
 
 /**
  * @brief  關閉 frame.dat 並釋放 reader 狀態
@@ -64,8 +64,7 @@ uint32_t frame_reader_frame_size(void);
  *   - ESP_ERR_NOT_FOUND     EOF 或無法再讀
  *   - ESP_ERR_INVALID_CRC   checksum mismatch（檔案指標已回復）
  */
-esp_err_t frame_reader_read(table_frame_t *out);
-
+esp_err_t frame_reader_read(table_frame_t* out);
 
 #ifdef __cplusplus
 }

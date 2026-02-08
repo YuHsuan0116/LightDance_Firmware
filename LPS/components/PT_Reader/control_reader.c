@@ -1,31 +1,33 @@
 #include "control_reader.h"
 
-#include "ff.h"
-#include "esp_log.h"
 #include <stdlib.h>
 #include <string.h>
-#include "board.h"
-static const char *TAG = "control_reader";
+#include "esp_log.h"
+#include "ff.h"
+#include "ld_board.h"
 
+static const char* TAG = "control_reader";
 
 /* -------------------------------------------------- */
 
-static esp_err_t fr_to_err(FRESULT fr)
-{
-    switch (fr) {
-    case FR_OK:         return ESP_OK;
-    case FR_NO_FILE:
-    case FR_NO_PATH:    return ESP_ERR_NOT_FOUND;
-    case FR_DENIED:     return ESP_ERR_INVALID_STATE;
-    default:            return ESP_FAIL;
+static esp_err_t fr_to_err(FRESULT fr) {
+    switch(fr) {
+        case FR_OK:
+            return ESP_OK;
+        case FR_NO_FILE:
+        case FR_NO_PATH:
+            return ESP_ERR_NOT_FOUND;
+        case FR_DENIED:
+            return ESP_ERR_INVALID_STATE;
+        default:
+            return ESP_FAIL;
     }
 }
 
 /* -------------------------------------------------- */
 
-esp_err_t get_channel_info(const char *control_path, ch_info_t *out)
-{
-    if (!control_path || !out) {
+esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
+    if(!control_path || !out) {
         return ESP_ERR_INVALID_ARG;
     }
 
@@ -34,25 +36,25 @@ esp_err_t get_channel_info(const char *control_path, ch_info_t *out)
     FIL fp;
     UINT br;
     FRESULT fr = f_open(&fp, control_path, FA_READ);
-    if (fr != FR_OK) {
+    if(fr != FR_OK) {
         ESP_LOGE(TAG, "open %s failed (fr=%d)", control_path, fr);
         return fr_to_err(fr);
     }
 
     /* ===== version (skip or keep if needed) ===== */
     uint8_t ver[2];
-    if (f_read(&fp, ver, 2, &br) != FR_OK || br != 2) {
+    if(f_read(&fp, ver, 2, &br) != FR_OK || br != 2) {
         goto io_fail;
     }
 
     /* ===== PCA9955B enable flags ===== */
-    for (int i = 0; i < PCA9955B_CH_NUM; i++) {
+    for(int i = 0; i < PCA9955B_CH_NUM; i++) {
         uint8_t v;
-        if (f_read(&fp, &v, 1, &br) != FR_OK || br != 1) {
+        if(f_read(&fp, &v, 1, &br) != FR_OK || br != 1) {
             goto io_fail;
         }
 
-        if (v > 1) {
+        if(v > 1) {
             ESP_LOGE(TAG, "of_enable[%d]=%u invalid", i, v);
             goto fmt_fail;
         }
@@ -61,16 +63,14 @@ esp_err_t get_channel_info(const char *control_path, ch_info_t *out)
     }
 
     /* ===== WS2812B strip LED counts ===== */
-    for (int i = 0; i < WS2812B_NUM; i++) {
+    for(int i = 0; i < WS2812B_NUM; i++) {
         uint8_t v;
-        if (f_read(&fp, &v, 1, &br) != FR_OK || br != 1) {
+        if(f_read(&fp, &v, 1, &br) != FR_OK || br != 1) {
             goto io_fail;
         }
 
-        if (v > WS2812B_MAX_PIXEL_NUM) {
-            ESP_LOGE(TAG,
-                     "strip_led_num[%d]=%u > %u",
-                     i, v, WS2812B_MAX_PIXEL_NUM);
+        if(v > WS2812B_MAX_PIXEL_NUM) {
+            ESP_LOGE(TAG, "strip_led_num[%d]=%u > %u", i, v, WS2812B_MAX_PIXEL_NUM);
             goto fmt_fail;
         }
 
@@ -79,23 +79,17 @@ esp_err_t get_channel_info(const char *control_path, ch_info_t *out)
 
     /* ===== frame_num (read & ignore) ===== */
     uint32_t frame_num;
-    if (f_read(&fp, &frame_num, 4, &br) != FR_OK || br != 4) {
+    if(f_read(&fp, &frame_num, 4, &br) != FR_OK || br != 4) {
         goto io_fail;
     }
 
     f_close(&fp);
 
-    ESP_LOGI(TAG,
-             "channel info loaded: PCA=%d, WS=%d",
-             PCA9955B_CH_NUM,
-             WS2812B_NUM);
+    ESP_LOGI(TAG, "channel info loaded: PCA=%d, WS=%d", PCA9955B_CH_NUM, WS2812B_NUM);
 
-
-
-             
     return ESP_OK;
 
-/* ---------------- error paths ---------------- */
+    /* ---------------- error paths ---------------- */
 
 io_fail:
     ESP_LOGE(TAG, "I/O error while reading %s", control_path);
@@ -109,30 +103,6 @@ fmt_fail:
     memset(out, 0, sizeof(*out));
     return ESP_ERR_INVALID_RESPONSE;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /* ---------- helpers ---------- */
 
@@ -162,7 +132,6 @@ fmt_fail:
 // }
 
 // esp_err_t control_reader_load(const char *path, control_info_t *out)
-
 
 // {
 //     if (!path || !out) return ESP_ERR_INVALID_ARG;
@@ -269,6 +238,3 @@ fmt_fail:
 //     control_reader_free(out);
 //     return ESP_ERR_INVALID_RESPONSE;
 // }
-
-
-

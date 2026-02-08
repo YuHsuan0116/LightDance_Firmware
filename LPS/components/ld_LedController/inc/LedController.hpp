@@ -70,14 +70,22 @@ class LedController {
             if(!pca_enabled_[i]) {
                 continue;
             }
-
+#if LD_IGNORE_DRIVER_INIT_FAIL
             pca_[i].init(bus_, BOARD_HW_CONFIG.i2c_addrs[i]);
+#else
+            ESP_GOTO_ON_ERROR(pca_[i].init(bus_, BOARD_HW_CONFIG.i2c_addrs[i]), fail, TAG, "pca[%d] init failed", i);
+#endif
         }
 
         for(int i = 0; i < WS2812B_NUM; ++i) {
             if(!ws_enabled_[i]) {
                 continue;
             }
+#if LD_IGNORE_DRIVER_INIT_FAIL
+            ws_[i].init(BOARD_HW_CONFIG.rmt_pins[i]);
+#else
+            ESP_GOTO_ON_ERROR(ws_[i].init(BOARD_HW_CONFIG.rmt_pins[i]);, fail, TAG, "ws[%d] init failed", i);
+#endif
 
             ws_[i].init(BOARD_HW_CONFIG.rmt_pins[i]);
         }
