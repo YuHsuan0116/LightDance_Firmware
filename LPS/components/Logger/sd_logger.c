@@ -6,8 +6,7 @@
 #include <errno.h>
 #include "esp_vfs_fat.h" 
 
-static const char *TAG = "SD_LOG";
-//static FIL log_file;
+static const char *TAG = "sd_logger";
 static FILE* log_file = NULL;
 
 static bool is_logging = false;
@@ -17,6 +16,7 @@ static vprintf_like_t default_vprintf = NULL;
 static int sd_log_vprintf(const char *fmt, va_list l) {
     //original terminal (UART)
     
+    /*
     int ret_len = 0;
     
     if (default_vprintf) {
@@ -25,7 +25,7 @@ static int sd_log_vprintf(const char *fmt, va_list l) {
         ret_len = default_vprintf(fmt, l_copy);
         va_end(l_copy);
     }
-    
+    */
     
     if (is_logging && log_file) {
         int len = vfprintf(log_file, fmt, l);
@@ -38,7 +38,6 @@ static int sd_log_vprintf(const char *fmt, va_list l) {
         return len;
     }
     return 0;
-    //return ret_len;
 }
 
 esp_err_t sd_logger_init(const char* log_path){
@@ -47,6 +46,7 @@ esp_err_t sd_logger_init(const char* log_path){
 
     const char* vfs_path = log_path;
     log_file = fopen(vfs_path, "w+");
+
     if (log_file == NULL) {
         ESP_LOGE(TAG, "Failed to open log file: %s (errno: %d)", vfs_path, errno);
         return ESP_FAIL;
