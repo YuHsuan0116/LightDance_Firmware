@@ -167,7 +167,7 @@ bool FrameBuffer::handle_frames(uint64_t time_ms) {
 
 #if SD_ENABLE
         read_frame(next);
-        // print_table_frame(*next);
+        print_table_frame(*next);
 #else
         test_read_frame(next);
 #endif
