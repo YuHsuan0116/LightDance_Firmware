@@ -8,6 +8,7 @@
 
 #include "player.hpp"
 #include "readframe.h"
+#include "sd_logger.h"
 
 static const char* TAG = "APP";
 static bool frame_sys_ready = false;
@@ -17,17 +18,26 @@ static void app_task(void* arg) {
     ESP_LOGI(TAG, "app_task start, HWM=%u", uxTaskGetStackHighWaterMark(NULL));
 
 #if SD_ENABLE
-    esp_err_t err = frame_system_init("0:/control.dat", "0:/frame.dat");
-    ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(err));
+    esp_err_t sd_err = frame_system_init("0:/control.dat", "0:/frame.dat");
+    ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(sd_err));
     ESP_LOGI(TAG, "HWM after frame_system_init=%u",
              uxTaskGetStackHighWaterMark(NULL));
 
-    if (err != ESP_OK) {
+    if (sd_err != ESP_OK) {
         ESP_LOGE(TAG, "frame system init failed, halt");
         vTaskDelay(portMAX_DELAY);
+        frame_sys_ready = false;
     }
 
-    frame_sys_ready = true;
+    else{
+        frame_sys_ready = true;
+    
+        esp_err_t log_err = sd_logger_init("/sd/LOGGER.log");
+        if (log_err != ESP_OK) {
+            ESP_LOGE(TAG, "SD Logger init failed: %s", esp_err_to_name(log_err));
+        }
+    }
+    
 #endif
 
     // console_test();  // 進入 REPL（通常不會 return）
