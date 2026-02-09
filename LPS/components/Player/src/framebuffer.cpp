@@ -115,7 +115,6 @@ void FrameBuffer::compute(uint64_t time_ms) {
             c = make_breath_color(time_ms);
         }
         fill(c);
-
         gamma_correction();
         brightness_correction();
 
@@ -167,7 +166,7 @@ bool FrameBuffer::handle_frames(uint64_t time_ms) {
 
 #if SD_ENABLE
         read_frame(next);
-        print_table_frame(*next);
+        // print_table_frame(*next);
 #else
         test_read_frame(next);
 #endif

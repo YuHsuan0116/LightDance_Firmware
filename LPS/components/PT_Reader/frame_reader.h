@@ -45,6 +45,8 @@ esp_err_t frame_reader_init(const char* path);
  */
 void frame_reader_deinit(void);
 
+esp_err_t frame_reader_reset(void);
+
 /**
  * @brief  回傳目前 frame 的 byte size
  *

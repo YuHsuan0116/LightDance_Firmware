@@ -86,7 +86,7 @@ static void sd_reader_task(void* arg) {
 
         /* ---- command handling ---- */
         if(cmd == CMD_RESET) {
-            frame_reset();
+            frame_reader_reset();
             cmd = CMD_NONE;
             xSemaphoreGive(sem_free);
             continue;
