@@ -27,6 +27,7 @@ static esp_err_t ws2812b_init_channel(gpio_num_t gpio_num, uint16_t pixel_num, r
         .gpio_num = gpio_num,
         .clk_src = RMT_CLK_SRC_DEFAULT,
         .resolution_hz = WS2812B_RESOLUTION,
+        .intr_priority = 0,
         .mem_block_symbols = 64,
         .trans_queue_depth = 8,
         .flags.with_dma = 0,

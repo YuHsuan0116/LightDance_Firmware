@@ -26,12 +26,12 @@ esp_err_t i2c_bus_init(gpio_num_t i2c_gpio_sda, gpio_num_t i2c_gpio_scl, i2c_mas
 
     // 2. Configuration
     i2c_master_bus_config_t i2c_bus_config = {
-        .i2c_port = I2C_NUM_0,                /*!< Use I2C port 0 */
-        .sda_io_num = i2c_gpio_sda,           /*!< SDA GPIO pin */
-        .scl_io_num = i2c_gpio_scl,           /*!< SCL GPIO pin */
-        .clk_source = I2C_CLK_SRC_DEFAULT,    /*!< Select default clock source */
-        .glitch_ignore_cnt = 7,               /*!< Glitch filter (typical value) */
-        .flags.enable_internal_pullup = true, /*!< Enable internal weak pull-ups */
+        .i2c_port = I2C_NUM_0,                                     /*!< Use I2C port 0 */
+        .sda_io_num = i2c_gpio_sda,                                /*!< SDA GPIO pin */
+        .scl_io_num = i2c_gpio_scl,                                /*!< SCL GPIO pin */
+        .clk_source = I2C_CLK_SRC_DEFAULT,                         /*!< Select default clock source */
+        .glitch_ignore_cnt = 7,                                    /*!< Glitch filter (typical value) */
+        .flags.enable_internal_pullup = LD_ENABLE_INTERNAL_PULLUP, /*!< Enable internal weak pull-ups */
     };
 
     // 3. Install Driver
