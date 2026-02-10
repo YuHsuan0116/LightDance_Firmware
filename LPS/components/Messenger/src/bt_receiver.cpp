@@ -345,22 +345,18 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
         case 0x04:
             Player::getInstance().release();
             break;
-        // case 0x05:
-        //     Player::getInstance().load();
-        //     break;
-        case 0x06:
+        case 0x05:
             if(test_data[0] == 0 && test_data[1] == 0 && test_data[2] == 0) {
-                // Player::getInstance().xxxAPI();
+                Player::getInstance().test();
             } else {
                 Player::getInstance().test(test_data[0], test_data[1], test_data[2]);
             }
             break;
-        // --- Cancel Command ---
-        case 0x07:
+        case 0x06:
             esp_timer_stop(s_slots[test_data[0]].timer_handle);
             ESP_LOGD(TAG, "CMD 0x%02X Canceled! CMD_ID = %d", s_slots[test_data[0]].ctx.target_cmd, test_data[0]);
             break;
-        case 0x08: {
+        case 0x07: {
             int8_t state = Player::getInstance().getState();
             int64_t now = esp_timer_get_time();
             int64_t target_time = s_last_locked_cmd.lock_timestamp + s_last_locked_cmd.original_delay;
@@ -502,9 +498,6 @@ esp_err_t bt_receiver_init(const bt_receiver_config_t* config) {
 }
 
 esp_err_t bt_receiver_start(void) {
-    ESP_LOGI(TAG, "bt_receiver_start enter (core=%d)", xPortGetCoreID());
-    ESP_LOGI(TAG, "bt status=%d, send_avail=%d", esp_bt_controller_get_status(), esp_vhci_host_check_send_available());
-
     if(s_is_running)
         return ESP_OK;
     uint16_t sz = make_cmd_reset(hci_cmd_buf);
@@ -514,15 +507,13 @@ esp_err_t bt_receiver_start(void) {
     sz = make_cmd_set_evt_mask(hci_cmd_buf, mask);
     esp_vhci_host_send_packet(hci_cmd_buf, sz);
     vTaskDelay(pdMS_TO_TICKS(20));
-
     sz = make_cmd_ble_set_scan_params(hci_cmd_buf, 0x00, 0x0F, 0x0F, 0x00, 0x00);
     esp_vhci_host_send_packet(hci_cmd_buf, sz);
     vTaskDelay(pdMS_TO_TICKS(20));
-
     sz = make_cmd_ble_set_scan_enable(hci_cmd_buf, 1, 0);
     esp_vhci_host_send_packet(hci_cmd_buf, sz);
     s_is_running = true;
-    xTaskCreatePinnedToCore(sync_process_task, "bt_rx_task", 4096, NULL, 5, &s_task_handle, 0);
+    xTaskCreatePinnedToCore(sync_process_task, "bt_rx_task", 4096, NULL, 5, &s_task_handle, 1);
     ESP_LOGI(TAG, "Receiver Started");
     return ESP_OK;
 }
