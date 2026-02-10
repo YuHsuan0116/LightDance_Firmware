@@ -9,7 +9,14 @@ const hw_config_t BOARD_HW_CONFIG = {
     /* PCA9955B addresses, channels 0..39 */
     .i2c_addrs =
         {
-            0x1f, 0x20, 0x22, 0x23, 0x5b, 0x5c, 0x5e, 0x5f,
+            0x1f,
+            0x20,
+            0x22,
+            0x23,
+            0x5b,
+            0x5c,
+            0x5e,
+            0x5f,
         },
 
     /* WS2812B output pins, channels 40..47 */

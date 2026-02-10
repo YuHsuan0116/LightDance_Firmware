@@ -34,14 +34,14 @@ typedef struct {
         uint8_t i2c_addrs[LD_BOARD_PCA9955B_NUM];
 
         struct {
-            uint8_t pca9955b_0;  /**< channels 0..4 */
-            uint8_t pca9955b_1;  /**< channels 5..9 */
-            uint8_t pca9955b_2;  /**< channels 10..14 */
-            uint8_t pca9955b_3;  /**< channels 15..19 */
-            uint8_t pca9955b_4;  /**< channels 20..24 */
-            uint8_t pca9955b_5;  /**< channels 25..29 */
-            uint8_t pca9955b_6;  /**< channels 30..34 */
-            uint8_t pca9955b_7;  /**< channels 35..39 */
+            uint8_t pca9955b_0; /**< channels 0..4 */
+            uint8_t pca9955b_1; /**< channels 5..9 */
+            uint8_t pca9955b_2; /**< channels 10..14 */
+            uint8_t pca9955b_3; /**< channels 15..19 */
+            uint8_t pca9955b_4; /**< channels 20..24 */
+            uint8_t pca9955b_5; /**< channels 25..29 */
+            uint8_t pca9955b_6; /**< channels 30..34 */
+            uint8_t pca9955b_7; /**< channels 35..39 */
         };
     };
 
@@ -50,14 +50,14 @@ typedef struct {
         gpio_num_t rmt_pins[LD_BOARD_WS2812B_NUM];
 
         struct {
-            gpio_num_t ws2812b_0;  /**< channel 40 */
-            gpio_num_t ws2812b_1;  /**< channel 41 */
-            gpio_num_t ws2812b_2;  /**< channel 42 */
-            gpio_num_t ws2812b_3;  /**< channel 43 */
-            gpio_num_t ws2812b_4;  /**< channel 44 */
-            gpio_num_t ws2812b_5;  /**< channel 45 */
-            gpio_num_t ws2812b_6;  /**< channel 46 */
-            gpio_num_t ws2812b_7;  /**< channel 47 */
+            gpio_num_t ws2812b_0; /**< channel 40 */
+            gpio_num_t ws2812b_1; /**< channel 41 */
+            gpio_num_t ws2812b_2; /**< channel 42 */
+            gpio_num_t ws2812b_3; /**< channel 43 */
+            gpio_num_t ws2812b_4; /**< channel 44 */
+            gpio_num_t ws2812b_5; /**< channel 45 */
+            gpio_num_t ws2812b_6; /**< channel 46 */
+            gpio_num_t ws2812b_7; /**< channel 47 */
         };
     };
 

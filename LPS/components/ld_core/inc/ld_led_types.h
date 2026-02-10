@@ -22,7 +22,7 @@ typedef struct {
  * Hue is encoded in [0, 1535] (6 sectors * 256).
  */
 typedef struct {
-    uint16_t h;  /**< Hue, range 0..1535 */
+    uint16_t h; /**< Hue, range 0..1535 */
     uint8_t s, v;
 } hsv8_t;
 
