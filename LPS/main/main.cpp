@@ -22,6 +22,8 @@ static void app_task(void* arg) {
     ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(sd_err));
     ESP_LOGI(TAG, "HWM after frame_system_init=%u", uxTaskGetStackHighWaterMark(NULL));
 
+    vTaskDelay(pdMS_TO_TICKS(1000));
+
     if(sd_err != ESP_OK) {
         ESP_LOGE(TAG, "frame system init failed, halt");
         vTaskDelay(portMAX_DELAY);
@@ -34,6 +36,9 @@ static void app_task(void* arg) {
         if(log_err != ESP_OK) {
             ESP_LOGE(TAG, "SD Logger init failed: %s", esp_err_to_name(log_err));
         }
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+
 #endif
     }
 
@@ -50,6 +55,8 @@ static void app_task(void* arg) {
     }
 
     Player::getInstance().init();
+
+    vTaskDelay(pdMS_TO_TICKS(1000));
 
 #if BT_ENABLE
     nvs_flash_init();
