@@ -2,48 +2,70 @@
 
 #include <math.h>
 
-// Map x in [0,255] to y = (x/255)^gamma in [0,255]
-static inline uint8_t gamma_u8(uint8_t x, float gamma) {
-    if(x == 0)
+/**
+ * @file gamma_lut.c
+ * @brief Gamma LUT generation for all supported LED output paths.
+ */
+
+enum {
+    LUT_SIZE = 256,
+    U8_MAX = 255,
+};
+
+/**
+ * @brief Map x in [0,255] to y = pow(x/255, gamma) * 255 with rounding.
+ */
+static uint8_t gamma_u8(uint8_t x, float gamma) {
+    if(x == 0u)
         return 0;
-    if(x == 255)
-        return 255;
+    if(x == U8_MAX)
+        return U8_MAX;
 
-    // Optional fast-paths
-    if(gamma == 1.0f)
+    /* Fast paths for common gamma values. */
+    if(gamma == 1.0f) {
         return x;
-    if(gamma == 0.0f)
-        return 255;
+    }
+    if(gamma == 0.0f) {
+        return U8_MAX;
+    }
 
-    float xf = (float)x / 255.0f;         // 0..1
-    float yf = powf(xf, gamma) * 255.0f;  // 0..255
+    float xf = (float)x / (float)U8_MAX;
+    float yf = powf(xf, gamma) * (float)U8_MAX;
 
-    int yi = (int)(yf + 0.5f);  // rounding
-    if(yi < 0)
+    int yi = (int)(yf + 0.5f);
+    if(yi < 0) {
         yi = 0;
-    if(yi > 255)
-        yi = 255;
+    }
+    if(yi > U8_MAX) {
+        yi = U8_MAX;
+    }
+
     return (uint8_t)yi;
 }
 
-uint8_t GAMMA_OF_R_lut[256];
-uint8_t GAMMA_OF_G_lut[256];
-uint8_t GAMMA_OF_B_lut[256];
+/**
+ * @brief Fill a single LUT with the given gamma curve.
+ */
+static void build_lut(uint8_t dst[LUT_SIZE], float gamma) {
+    for(int i = 0; i < LUT_SIZE; ++i) {
+        dst[i] = gamma_u8((uint8_t)i, gamma);
+    }
+}
 
-uint8_t GAMMA_LED_R_lut[256];
-uint8_t GAMMA_LED_G_lut[256];
-uint8_t GAMMA_LED_B_lut[256];
+uint8_t GAMMA_OF_R_lut[LUT_SIZE];
+uint8_t GAMMA_OF_G_lut[LUT_SIZE];
+uint8_t GAMMA_OF_B_lut[LUT_SIZE];
+
+uint8_t GAMMA_LED_R_lut[LUT_SIZE];
+uint8_t GAMMA_LED_G_lut[LUT_SIZE];
+uint8_t GAMMA_LED_B_lut[LUT_SIZE];
 
 void calc_gamma_lut() {
-    for(int i = 0; i < 256; i++) {
-        uint8_t x = (uint8_t)i;
+    build_lut(GAMMA_OF_R_lut, GAMMA_OF_R);
+    build_lut(GAMMA_OF_G_lut, GAMMA_OF_G);
+    build_lut(GAMMA_OF_B_lut, GAMMA_OF_B);
 
-        GAMMA_OF_R_lut[i] = gamma_u8(x, GAMMA_OF_R);
-        GAMMA_OF_G_lut[i] = gamma_u8(x, GAMMA_OF_G);
-        GAMMA_OF_B_lut[i] = gamma_u8(x, GAMMA_OF_B);
-
-        GAMMA_LED_R_lut[i] = gamma_u8(x, GAMMA_LED_R);
-        GAMMA_LED_G_lut[i] = gamma_u8(x, GAMMA_LED_G);
-        GAMMA_LED_B_lut[i] = gamma_u8(x, GAMMA_LED_B);
-    }
+    build_lut(GAMMA_LED_R_lut, GAMMA_LED_R);
+    build_lut(GAMMA_LED_G_lut, GAMMA_LED_G);
+    build_lut(GAMMA_LED_B_lut, GAMMA_LED_B);
 }

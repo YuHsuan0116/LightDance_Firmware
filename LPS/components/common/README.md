@@ -1,55 +1,150 @@
-# common component
+# Common
 
-`common` is the shared foundation layer for the firmware. It provides:
-- LED color types and constants (`GRB/HSV`)
-- Color math utilities (convert, interpolate, gamma, brightness scale)
-- Board-level hardware mapping (GPIO and I2C addresses)
-- Shared frame data structures for render/playback modules
+Shared foundation layer for LightDance firmware.
 
-This component does not send data to hardware directly. It defines the common types and helpers used by higher-level modules such as `LedController`, `Player`, and `PT_Reader`.
+`common` centralizes reusable data types, board/channel configuration, and color-processing utilities used by runtime modules (`Player`, `LedController`, `PT_Reader`, and `main` startup code).
 
-## Directory
+## Table of Contents
+
+1. [What This Component Owns](#what-this-component-owns)
+2. [Repository Layout](#repository-layout)
+3. [Core Concepts](#core-concepts)
+4. [Public API](#public-api)
+5. [Initialization Contract](#initialization-contract)
+6. [Usage Example](#usage-example)
+7. [Build Integration](#build-integration)
+8. [Maintenance Notes](#maintenance-notes)
+
+## What This Component Owns
+
+This component provides:
+- LED color/value types (`grb8_t`, `hsv8_t`, `led_type_t`)
+- Color conversion and interpolation (`GRB <-> HSV`, linear blend)
+- Gamma lookup tables and brightness limiting
+- Board-level hardware mapping (`BOARD_HW_CONFIG`)
+- Runtime channel pixel metadata (`ch_info`)
+- Shared frame payload structures for playback/rendering paths
+
+This component does not provide:
+- Hardware transport drivers (RMT/I2C send logic)
+- Task scheduling or player control flow
+- Experimental/dev-only helpers
+
+## Repository Layout
 
 ```text
 components/common/
 |-- inc/
-|   |-- config.h
-|   |-- led_types.h
-|   |-- led_ops.h
-|   |-- math_u8.h
-|   |-- gamma_lut.h
-|   |-- ld_board.h
-|   `-- frame.h
+|   |-- config.h         # feature flags, brightness caps, timeouts
+|   |-- led_types.h      # color structs, enums, and common constants
+|   |-- math_u8.h        # 8-bit math helpers (lerp/scaling/min/max)
+|   |-- gamma_lut.h      # gamma constants + LUT declarations
+|   |-- led_ops.h        # color conversion/interpolation/output transforms
+|   |-- ld_board.h       # board mapping + channel info structs
+|   `-- frame.h          # shared frame payload definitions
 |-- src/
-|   |-- gamma_lut.c
-|   `-- ld_board.c
+|   |-- gamma_lut.c      # LUT generation implementation
+|   `-- ld_board.c       # BOARD_HW_CONFIG and ch_info definitions
 `-- CMakeLists.txt
 ```
 
-## Key Structures
+## Core Concepts
 
-- `grb8_t`, `hsv8_t`, `led_type_t` in `components/common/inc/led_types.h`
-- `hw_config_t`, `ch_info_t`, `ld_channel_layout_t` in `components/common/inc/ld_board.h`
-- `ld_frame_data_t`, `table_frame_t` in `components/common/inc/frame.h`
+### Color Model
 
-## Main APIs
+- `grb8_t` stores channels as `g, r, b` (8-bit each).
+- `hsv8_t` uses:
+  - `h`: `0..1535` (`6 * 256` hue sectors)
+  - `s`: `0..255`
+  - `v`: `0..255`
 
-From `components/common/inc/led_ops.h`:
-- `grb_to_hsv_u8()`, `hsv_to_grb_u8()`
-- `grb_lerp_u8()`, `grb_lerp_hsv_u8()`
-- `grb_gamma_u8()`
-- `grb_set_brightness()`
+### LED Device Types
 
-From `components/common/inc/gamma_lut.h`:
-- `calc_gamma_lut()`
+`led_type_t` currently supports:
+- `LED_WS2812B`
+- `LED_PCA9955B`
 
-## Initialization Order
+Gamma and brightness behavior is selected by `led_type_t`.
 
-1. Call `calc_gamma_lut()` early in startup.
-2. Configure channel pixel layout (`ch_info` or `ld_channel_layout_t`) before initializing hardware control modules.
-3. Perform color/frame processing in upper layers, then pass the output to `LedController`.
+### Board and Channel Model
 
-## Minimal Example
+- `BOARD_HW_CONFIG` is a global constant containing:
+  - 8 PCA9955B I2C addresses
+  - 8 WS2812B GPIO output pins
+- `ch_info` is a mutable global containing pixel counts:
+  - `rmt_strips[WS2812B_NUM]`
+  - `i2c_leds[PCA9955B_CH_NUM]`
+
+## Public API
+
+All headers under `components/common/inc` are treated as public.
+
+### `config.h`
+
+Global compile-time flags and limits, including:
+- `SD_ENABLE`, `BT_ENABLE`, `LOGGER_ENABLE`
+- `OF_MAX_BRIGHTNESS_R/G/B`
+- `LED_MAX_BRIGHTNESS`
+- `I2C_FREQ`, `I2C_TIMEOUT_MS`, `RMT_TIMEOUT_MS`
+- `LD_IGNORE_DRIVER_INIT_FAIL`, `LD_ENABLE_INTERNAL_PULLUP`
+
+### `gamma_lut.h`
+
+- Gamma constants for OF and LED paths:
+  - `GAMMA_OF_R/G/B`
+  - `GAMMA_LED_R/G/B`
+- LUT buffers:
+  - `GAMMA_OF_*_lut[256]`
+  - `GAMMA_LED_*_lut[256]`
+- Initializer:
+  - `void calc_gamma_lut(void);`
+
+### `led_ops.h`
+
+Key operations:
+- Conversion:
+  - `hsv8_t grb_to_hsv_u8(grb8_t in);`
+  - `grb8_t hsv_to_grb_u8(hsv8_t in);`
+- Interpolation:
+  - `grb8_t grb_lerp_u8(grb8_t start, grb8_t end, uint8_t t);`
+  - `grb8_t grb_lerp_hsv_u8(grb8_t start, grb8_t end, uint8_t t);`
+- Output transforms:
+  - `grb8_t grb_gamma_u8(grb8_t in, led_type_t type);`
+  - `grb8_t grb_set_brightness(grb8_t in, led_type_t type);`
+
+Implementation notes:
+- HSV hue interpolation takes the shortest path around the hue wheel.
+- Gray-edge cases (`s == 0`) are handled to avoid unstable hue transitions.
+- `t` in interpolation APIs is `0..255`.
+
+### `ld_board.h`
+
+Defines:
+- Topology constants (`WS2812B_NUM`, `WS2812B_MAX_PIXEL_NUM`, `PCA9955B_*`)
+- `hw_config_t`
+- `ch_info_t`
+- Globals:
+  - `extern const hw_config_t BOARD_HW_CONFIG;`
+  - `extern ch_info_t ch_info;`
+
+### `frame.h`
+
+Shared frame payload structs:
+- `frame_data`
+- `table_frame_t`
+
+## Initialization Contract
+
+Required startup order:
+
+1. Call `calc_gamma_lut()` once in early startup.
+2. Initialize `ch_info` with valid channel pixel counts.
+3. Initialize modules that depend on `ch_info` (for example `LedController::init()`).
+4. Run rendering pipeline (`lerp -> gamma -> brightness`) before hardware send.
+
+If `ch_info` is empty or invalid, downstream modules may fail initialization or parse frame data incorrectly.
+
+## Usage Example
 
 ```c
 #include "gamma_lut.h"
@@ -59,8 +154,12 @@ From `components/common/inc/gamma_lut.h`:
 void app_led_prepare(void) {
     calc_gamma_lut();
 
-    ch_info.rmt_strips[0] = 60;
-    ch_info.rmt_strips[1] = 60;
+    for(int i = 0; i < WS2812B_NUM; ++i) {
+        ch_info.rmt_strips[i] = WS2812B_MAX_PIXEL_NUM;
+    }
+    for(int i = 0; i < PCA9955B_CH_NUM; ++i) {
+        ch_info.i2c_leds[i] = 1;
+    }
 
     grb8_t c = grb8(255, 80, 20);
     c = grb_gamma_u8(c, LED_WS2812B);
@@ -68,9 +167,15 @@ void app_led_prepare(void) {
 }
 ```
 
-## Tuning Points
+## Build Integration
 
-- Feature flags and timeouts: `components/common/inc/config.h`
-- Gamma coefficients: `components/common/inc/gamma_lut.h`
-- Board pin/address mapping: `components/common/src/ld_board.c`
-- Brightness caps: `components/common/inc/config.h`
+`components/common/CMakeLists.txt` registers:
+- Sources: `src/ld_board.c`, `src/gamma_lut.c`
+- Public include directory: `inc`
+- Required dependency: `driver`
+
+## Maintenance Notes
+
+- Keep constants in `ld_board.h` synchronized with frame buffers and channel loops.
+- Any gamma/brightness change should be validated on real hardware.
+- `led_ops.h` is header-inline heavy; changes affect all translation units that include it.

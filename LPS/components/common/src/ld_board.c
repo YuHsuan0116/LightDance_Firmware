@@ -1,23 +1,30 @@
 #include "ld_board.h"
 
-const hw_config_t BOARD_HW_CONFIG = {
-    .ws2812b_0 = GPIO_NUM_32,
-    .ws2812b_1 = GPIO_NUM_25,
-    .ws2812b_2 = GPIO_NUM_26,
-    .ws2812b_3 = GPIO_NUM_27,
-    .ws2812b_4 = GPIO_NUM_19,
-    .ws2812b_5 = GPIO_NUM_18,
-    .ws2812b_6 = GPIO_NUM_5,
-    .ws2812b_7 = GPIO_NUM_17,
+/**
+ * @file ld_board.c
+ * @brief Board-specific immutable hardware mapping and runtime channel state.
+ */
 
-    .pca9955b_0 = 0x1f,
-    .pca9955b_1 = 0x20,
-    .pca9955b_2 = 0x22,
-    .pca9955b_3 = 0x23,
-    .pca9955b_4 = 0x5b,
-    .pca9955b_5 = 0x5c,
-    .pca9955b_6 = 0x5e,
-    .pca9955b_7 = 0x5f,
+const hw_config_t BOARD_HW_CONFIG = {
+    /* PCA9955B addresses, channels 0..39 */
+    .i2c_addrs =
+        {
+            0x1f, 0x20, 0x22, 0x23, 0x5b, 0x5c, 0x5e, 0x5f,
+        },
+
+    /* WS2812B output pins, channels 40..47 */
+    .rmt_pins =
+        {
+            GPIO_NUM_32,
+            GPIO_NUM_25,
+            GPIO_NUM_26,
+            GPIO_NUM_27,
+            GPIO_NUM_19,
+            GPIO_NUM_18,
+            GPIO_NUM_5,
+            GPIO_NUM_17,
+        },
 };
 
-ch_info_t ch_info;
+/* Populated during startup from app config / control data. */
+ch_info_t ch_info = {0};
