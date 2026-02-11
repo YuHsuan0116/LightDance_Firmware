@@ -10,7 +10,40 @@ Its primary function is for multi-device synchronization systems. The receiver s
 * **Precise Synchronization**: Includes synchronization window logic (`sync_process_task`) to collect multiple advertising packets and calculate the average trigger time, eliminating the variance caused by wireless transmission latency.
 * **Status Feedback**: Responds to CHECK commands by reporting the current state and the dynamic remaining time until the next action.
 * **Target Filtering**: Supports filtering by `Manufacturer ID` and `Target Mask` (bitmask), allowing commands to be targeted at a single device or a group of devices.
-* **Command Queueing**: Manages concurrent action commands using FreeRTOS Queues and Timers.
+
+## 🧠 System Internal Workflow
+
+This section explains how the receiver processes a signal from the air to the actual action execution.
+
+### 1. Packet Reception (ISR Context)
+
+* **HCI Callback**: When the Bluetooth Controller receives an advertising packet, it triggers `vhci_host_cb`.
+* **Fast Parsing**: The function `fast_parse_and_trigger` filters the packet by Manufacturer ID and Target Mask.
+* **Queueing**: If valid, the raw packet data (including the `delay` and `rx_timestamp`) is pushed into a FreeRTOS Queue (`s_adv_queue`).
+
+### 2. Synchronization (Task Context)
+
+The `sync_process_task` continuously reads from the queue:
+
+* **Window Start**: When a new Command ID is seen, a "Sync Window" (e.g., 500ms) starts.
+* **Averaging**: The task collects multiple packets for the same Command ID. It calculates the **Absolute Target Time** for each packet: `Target = RX_Timestamp + Delay_Value`.
+* **Jitter Reduction**: It averages these Target Times to calculate the final firing timestamp, effectively canceling out transmission jitter.
+
+### 3. Scheduling
+
+* **Timer Set**: Once the window closes (or a sufficient sample count is reached), `esp_timer_start_once` is called with the calculated remaining duration.
+* **Locking**: The command is recorded as `s_last_locked_cmd` for status reporting purposes.
+
+### 4. Execution & Feedback
+
+* **Action Trigger**: When the timer expires, `timer_timeout_cb` executes the corresponding Player action (Play, Pause, etc.).
+* **Check/ACK Handling**: If the command is `CHECK` (0x07):
+1. The system calculates the **Remaining Time** of the *last locked command*.
+2. It temporarily **stops scanning**.
+3. It broadcasts an **ACK Packet** (Advertising) containing the state and remaining time.
+4. It **resumes scanning** to listen for new commands.
+
+
 
 ## 📂 File Structure
 
@@ -21,7 +54,6 @@ Messenger/
 │   └── bt_receiver.h       # External API interface and structure definitions
 └── src/
     └── bt_receiver.cpp     # Core implementation (HCI commands, ISR parsing, sync logic, ACK task)
-
 ```
 
 ## 🛠 Dependencies
@@ -69,12 +101,11 @@ bt_receiver_stop();
 ### 1. Received Packet (From Sender)
 
 The receiver parses the `AD Type = 0xFF` (Manufacturer Specific Data) section within the BLE advertising packet.
-The data payload format is as follows:
 
 | Offset | Length | Description | Notes |
-| :--- | :--- | :--- | :--- |
+| --- | --- | --- | --- |
 | 0 | 3 | **Manufacturer ID** | Little Endian, must match Config |
-| 3 | 1 | **CMD Info** | High 4-bit: `CMD_ID` (Identifier)<br>Low 4-bit: `CMD_TYPE` (Action Type) |
+| 3 | 1 | **CMD Info** | High 4-bit: `CMD_ID` (Identifier), Low 4-bit: `CMD_TYPE` (Action Type) |
 | 4 | 8 | **Target Mask** | 64-bit Mask, corresponds to `my_player_id` |
 | 12 | 4 | **Delay** | Big Endian, execution delay (us) |
 | 16 | 4 | **Prep Time** | Big Endian, preparation time |
@@ -87,7 +118,7 @@ When a `CHECK` command is received, the receiver broadcasts an ACK packet.
 | Offset | Length | Description | Notes |
 | --- | --- | --- | --- |
 | 0 | 2 | **Manufacturer ID** | `0xFFFF` |
-| 2 | 1 | **Packet Type** | `0x08` (CMD_TYPE_ACK) |
+| 2 | 1 | **Packet Type** | **`0x07`** (CMD_TYPE_ACK) |
 | 3 | 1 | **My ID** | The `my_player_id` of this device |
 | 4 | 1 | **CMD ID** | ID of the command being acknowledged |
 | 5 | 1 | **CMD Type** | Action type (e.g., PLAY, PAUSE) |
@@ -96,29 +127,14 @@ When a `CHECK` command is received, the receiver broadcasts an ACK packet.
 
 ### Supported Command Types (CMD_TYPE)
 
-Based on the `timer_timeout_cb` implementation:
+These values are defined in the `timer_timeout_cb` function within `bt_receiver.cpp`:
 
-* `0x01`: Play
-* `0x02`: Pause
-* `0x03`: Stop
-* `0x04`: Release (Resources)
-<!-- * `0x05`: Load -->
-* `0x06`: Test (Uses the `Data` field)
-* `0x07`: Cancel (Cancels the schedule for a specific `CMD_ID`)
-* `0x08`: Check (Triggers immediate status report)
-
-## ⚙️ Operating Principle
-
-1. **HCI Setup**: Configures Event Mask and enables passive scanning.
-2. **Packet Processing**:
-* Valid packets are pushed to `sync_process_task`.
-* **Sync Logic**: Averages timestamps within `sync_window_us` to reduce jitter.
-
-
-3. **Command Locking & Timestamping**:
-* When a command is locked, `s_last_locked_cmd` records the command info and the **lock timestamp** (`esp_timer_get_time()`).
-
-4. **CHECK Command Handling**:
-    1. Retrieves current state from `Player::getInstance().getState()`.
-    2. Calculates **Remaining Time**: `(Lock Timestamp + Original Delay) - Current Time`.
-    3. Broadcasts ACK containing the remaining time and state.
+| Type Code | Action | Data Payload Usage |
+| --- | --- | --- |
+| `0x01` | **Play** | None |
+| `0x02` | **Pause** | None |
+| `0x03` | **Stop** | None |
+| `0x04` | **Release** | None |
+| `0x05` | **Test** | Uses `Data[0-2]` for test parameters |
+| `0x06` | **Cancel** | `Data[0]` contains the target `CMD_ID` to cancel |
+| `0x07` | **Check** | Triggers immediate status report (ACK) |
