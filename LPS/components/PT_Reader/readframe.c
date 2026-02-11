@@ -29,6 +29,7 @@ static TaskHandle_t sd_task = NULL;
 
 static bool inited = false;
 static bool running = false;
+static bool eof_reached = false;
 
 /* ================= SD task command ================= */
 
@@ -85,8 +86,9 @@ static void sd_reader_task(void* arg) {
             continue;
 
         /* ---- command handling ---- */
-        if(cmd == CMD_RESET) {
-            frame_reader_reset();
+        if (cmd == CMD_RESET) {
+            frame_reader_reset(); //correction
+            eof_reached = false;
             cmd = CMD_NONE;
             xSemaphoreGive(sem_free);
             continue;
@@ -97,9 +99,10 @@ static void sd_reader_task(void* arg) {
 
         if(err == ESP_ERR_NOT_FOUND) {
             ESP_LOGI(TAG, "EOF reached");
-            running = false;
+            eof_reached = true;
+            
             xSemaphoreGive(sem_ready);
-            break;
+            continue;
         }
 
         if(err != ESP_OK) {
@@ -160,7 +163,8 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
 
     /* ---------- 4. runtime ---------- */
     running = true;
-    cmd = CMD_NONE;
+    cmd     = CMD_NONE;
+    eof_reached = false;
 
     /* ---------- 5. create SD reader task ---------- */
     xTaskCreate(sd_reader_task, "sd_reader", 16384, NULL, 5, &sd_task);
@@ -178,6 +182,8 @@ esp_err_t read_frame(table_frame_t* playerbuffer) {
         return ESP_ERR_INVALID_STATE;
     if(!playerbuffer)
         return ESP_ERR_INVALID_ARG;
+    if (eof_reached) 
+        return ESP_ERR_NOT_FOUND;
 
     if(xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE)
         return ESP_FAIL;
@@ -239,8 +245,9 @@ const char* get_sd_card_id(void) {
         return "0";  // no card
     }
     static char card_id[33];  // 32 chars + null terminator
-
-    snprintf(card_id, sizeof(card_id), "%02X%04X%08X", g_sd_card->cid.mfg_id, g_sd_card->cid.oem_id, g_sd_card->cid.serial);
-
+    
+    snprintf(card_id, sizeof(card_id), "%d",
+             g_sd_card->cid.serial);
+    
     return card_id;
 }

@@ -12,22 +12,20 @@ static FILE* log_file = NULL;
 static bool is_logging = false;
 static vprintf_like_t default_vprintf = NULL;
 
-// vprintf（直接寫入檔案）
-static int sd_log_vprintf(const char* fmt, va_list l) {
-    // original terminal (UART)
-
-    /*
+//vprintf（直接寫入檔案）
+static int sd_log_vprintf(const char *fmt, va_list l) {
+    //original terminal (UART)
+    
     int ret_len = 0;
-
     if (default_vprintf) {
         va_list l_copy;
         va_copy(l_copy, l);
         ret_len = default_vprintf(fmt, l_copy);
         va_end(l_copy);
     }
-    */
-
-    if(is_logging && log_file) {
+    
+    
+    if (is_logging && log_file) {
         int len = vfprintf(log_file, fmt, l);
 
         static int write_count = 0;
