@@ -2,11 +2,11 @@ import struct
 
 OF_channel = [
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # OF 0-9
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # OF 10-19
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # OF 20-29
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1   # OF 30-39
+    0, 0, 0, 0, 0, 0, 0, 0, 1, 1,  # OF 10-19
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # OF 20-29
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0   # OF 30-39
 ]
-Strip_channel = [0, 0, 0, 0, 0, 0, 0, 0]  # Strip 0-7的LED數量
+Strip_channel = [10, 0, 0, 0, 0, 0, 0, 0]  # Strip 0-7的LED數量
 
 VERSION_MAJOR = 1
 VERSION_MINOR = 2
@@ -69,7 +69,7 @@ with open("frame.dat", "wb") as frame_file:
         
         for i, enabled in enumerate(OF_channel):
             if enabled:
-                if k % 2 == 1:
+                if k % 2 == 0:
                     frame_data.append(color[0])  # G
                     frame_data.append(color[1])  # R
                     frame_data.append(color[2])  # B
