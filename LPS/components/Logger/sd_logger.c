@@ -35,7 +35,7 @@ static int sd_log_vprintf(const char *fmt, va_list l) {
         }
         return len;
     }
-    return 0;
+    return ret_len;
 }
 
 esp_err_t sd_logger_init(const char* log_path) {

@@ -88,7 +88,6 @@ static void sd_reader_task(void* arg) {
         /* ---- command handling ---- */
         if (cmd == CMD_RESET) {
             frame_reader_reset(); //correction
-            eof_reached = false;
             cmd = CMD_NONE;
             xSemaphoreGive(sem_free);
             continue;
@@ -205,7 +204,9 @@ esp_err_t frame_reset(void) {
 
     /* drain ready semaphore */
     while(xSemaphoreTake(sem_ready, 0) == pdTRUE) {}
-
+    
+    running = true;
+    eof_reached = false;
     cmd = CMD_RESET;
     xSemaphoreGive(sem_free);
     return ESP_OK;
