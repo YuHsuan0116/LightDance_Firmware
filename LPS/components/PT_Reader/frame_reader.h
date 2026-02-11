@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "esp_err.h"
-#include "frame.h"
+#include "ld_frame.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,6 +65,8 @@ uint32_t frame_reader_frame_size(void);
  *   - ESP_ERR_INVALID_CRC   checksum mismatch（檔案指標已回復）
  */
 esp_err_t frame_reader_read(table_frame_t* out);
+
+esp_err_t frame_reader_reset(void);
 
 #ifdef __cplusplus
 }

@@ -7,7 +7,7 @@
 #include "esp_log.h"
 
 #include "control_reader.h"
-#include "frame.h"
+#include "ld_frame.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -86,7 +86,7 @@ static void sd_reader_task(void* arg) {
 
         /* ---- command handling ---- */
         if(cmd == CMD_RESET) {
-            frame_reset();
+            frame_reader_reset();
             cmd = CMD_NONE;
             xSemaphoreGive(sem_free);
             continue;
