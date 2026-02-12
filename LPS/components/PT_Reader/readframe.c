@@ -31,6 +31,19 @@ static bool inited = false;
 static bool running = false;
 static bool eof_reached = false;
 
+static const struct {
+    const char* label;
+    uint8_t id;
+} sd_label_map[] = {
+    {"LPS01", 1}, {"LPS02", 2}, {"LPS03", 3}, {"LPS04", 4}, {"LPS05", 5},
+    {"LPS06", 6}, {"LPS07", 7}, {"LPS08", 8}, {"LPS09", 9}, {"LPS10", 10},
+    {"LPS11", 11}, {"LPS12", 12}, {"LPS13", 13}, {"LPS14", 14}, {"LPS15", 15},
+    {"LPS16", 16}, {"LPS17", 17}, {"LPS18", 18}, {"LPS19", 19}, {"LPS20", 20},
+    {"LPS21", 21}, {"LPS22", 22}, {"LPS23", 23}, {"LPS24", 24}, {"LPS25", 25},
+    {"LPS26", 26}, {"LPS27", 27}, {"LPS28", 28}, {"LPS29", 29}, {"LPS30", 30},
+    {"LPS31", 31}
+};
+
 /* ================= SD task command ================= */
 
 typedef enum {
@@ -240,15 +253,23 @@ void frame_system_deinit(void) {
 }
 
 /* ---- get sd card id ---- */
-
-const char* get_sd_card_id(void) {
+int get_sd_card_id(void) {
     if(g_sd_card == NULL) {
-        return "0";  // no card
+        return 0;
     }
-    static char card_id[33];  // 32 chars + null terminator
     
-    snprintf(card_id, sizeof(card_id), "%d",
-             g_sd_card->cid.serial);
+    char volume_label[20];
+    FRESULT res = f_getlabel("0:", volume_label, NULL);
     
-    return card_id;
+    if(res != FR_OK || volume_label[0] == '\0') {
+        return 0;
+    }
+    
+    for(int i = 0; i < sizeof(sd_label_map)/sizeof(sd_label_map[0]); i++) {
+        if(strcmp(volume_label, sd_label_map[i].label) == 0) {
+            return sd_label_map[i].id;  //return 1~31
+        }
+    }
+    
+    return 0;
 }

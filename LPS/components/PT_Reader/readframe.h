@@ -78,7 +78,7 @@ esp_err_t frame_reset(void);
  */
 void frame_system_deinit(void);
 
-const char* get_sd_card_id(void);
+int get_sd_card_id(void);
 
 #ifdef __cplusplus
 }
