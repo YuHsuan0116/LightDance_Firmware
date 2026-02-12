@@ -60,15 +60,25 @@ static void app_task(void* arg) {
 
 #if LD_CFG_ENABLE_BT
     nvs_flash_init();
-    bt_receiver_config_t rx_cfg = {
-        .feedback_gpio_num = -1,
-        .manufacturer_id = 0xFFFF,
-        .my_player_id = 1,
-        .sync_window_us = 500000,
-        .queue_size = 20,
-    };
-    bt_receiver_init(&rx_cfg);
-    bt_receiver_start();
+    int player_id = -1;
+#if LD_CFG_ENABLE_SD
+    player_id = get_sd_card_id();
+#else
+    player_id = 1; //for test
+#endif
+    if (player_id > 0) {
+        bt_receiver_config_t rx_cfg = {
+            .feedback_gpio_num = -1,
+            .manufacturer_id = 0xFFFF,
+            .my_player_id = player_id, 
+            .sync_window_us = 500000,
+            .queue_size = 20,
+        };
+        bt_receiver_init(&rx_cfg);
+        bt_receiver_start();
+    } else {
+        ESP_LOGE(TAG, "Invalid Player ID (%d). Skipping BT init.", player_id);
+    }
 #else
     console_test();
 #endif
