@@ -201,7 +201,7 @@ esp_err_t read_frame(table_frame_t* playerbuffer) {
         return ESP_FAIL;
 
     if(!running)
-        return ESP_ERR_NOT_FOUND;
+        return ESP_ERR_INVALID_STATE;
 
     memcpy(playerbuffer, &frame_buf, sizeof(table_frame_t));
 
@@ -250,6 +250,15 @@ void frame_system_deinit(void) {
     inited = false;
 
     ESP_LOGI(TAG, "frame system deinit");
+}
+
+/* ---- end of file ---- */
+
+bool is_eof_reached(void) {
+    if (!inited) {
+        return false;
+    }
+    return eof_reached;
 }
 
 /* ---- get sd card id ---- */

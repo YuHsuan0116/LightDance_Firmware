@@ -80,6 +80,8 @@ void frame_system_deinit(void);
 
 int get_sd_card_id(void);
 
+bool is_eof_reached(void);
+
 #ifdef __cplusplus
 }
 #endif
