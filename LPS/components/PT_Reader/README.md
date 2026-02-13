@@ -61,83 +61,88 @@ static bool eof_reached;
 
 ### frame_system_init(const char* control_path, const char* frame_path)
 
-在 UNINIT 狀態下：
+- 在 UNINIT 狀態下：
 
-成功 → 進入 INITED 狀態
+    - 成功 → 進入 INITED 狀態
 
-失敗 → 停留在 UNINIT 狀態
+    - 失敗 → 停留在 UNINIT 狀態
 
-- inited = 0 → 1
+    - inited = 0 → 1
 
-- running = 0 → 1
+    - running = 0 → 1
 
-- eof = 0 → 0
+- 在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
 
-
-在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
-
-拒絕操作，return ESP_ERR_INVALID_STATE
+    - 拒絕操作，return ESP_ERR_INVALID_STATE
 
 ---
 
 ### read_frame(table_frame_t* playerbuffer)
 
-在 INITED 狀態下：
+- 在 INITED 狀態下：
 
-成功 → 進入 ACTIVE 狀態
+    - 成功 → 進入 ACTIVE 狀態
 
-錯誤 → 進入 STOPPED 狀態
+    - 錯誤 → 進入 STOPPED 狀態
 
-在 ACTIVE 狀態下：
+- 在 ACTIVE 狀態下：
 
-情況1：讀取成功
+    - 情況1：讀取成功
 
-停留在 ACTIVE 狀態
+        - 停留在 ACTIVE 狀態
 
-變數無變化
+        - 變數無變化
 
-情況2：讀取到 EOF
+    - 情況2：讀取到 EOF
 
-eof = 0 → 1
+        - eof_reached = 0 → 1
 
-情況3：讀取錯誤
+    - 情況3：讀取錯誤
 
-進入 STOPPED 狀態
+        - 進入 STOPPED 狀態
 
-變數：running = 1 → 0
+        - running = 1 → 0
 
-在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
+- 在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
 
-拒絕操作，return ESP_ERR_INVALID_STATE
+    - 拒絕操作，return ESP_ERR_INVALID_STATE
 
 ---
 
 ### frame_reset(void)
 
-在 INITED / ACTIVE / EOF_REACHED 狀態下：
+- 在 INITED / ACTIVE / EOF_REACHED 狀態下：
 
-重置到第0幀，SD任務處理後進入 INITED 狀態
+    - 重置到第0幀，SD任務處理後進入 INITED 狀態
 
-eof 1/0 → 0
+    - eof_reached 1/0 → 0
 
-在 UNINIT / STOPPED 狀態下：
+- 在 UNINIT / STOPPED 狀態下：
 
-返回 ESP_ERR_INVALID_STATE
+    - 返回 ESP_ERR_INVALID_STATE
 
 ---
 
 ### frame_system_deinit(void)
 
-在所有狀態下：
+- 在所有狀態下：
 
-直接進入 UNINIT
+    - 直接進入 UNINIT
 
-inited = 1 → 0
+    - inited = 1 → 0
 
 ---
 
-### get_sd_card_id()
+### is_eof_reached(void)
+
+- 回傳 eof_reached
+
+---
+
+### get_sd_card_id(void)
 
 讀取SD卡label回傳ID
-有SD卡 → 回傳1~31
-無SD卡 → 回傳 0
+
+- 有SD卡 → 回傳1~31
+
+- 無SD卡 → 回傳 0
