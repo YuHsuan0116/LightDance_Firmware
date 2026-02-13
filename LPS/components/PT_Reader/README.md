@@ -1,70 +1,143 @@
-# Player API Guide 
+# Pattern Table v1.1 Guide 
 
 This document is written for the player team. It explains what the frame system provides, how to use it correctly, and what assumptions the system makes. 
 
+## 1. Finite State Machine
 
-
-## 1. API
-
-
-```c
-bool read_frame(table_frame_t *playerbuffer);
+define variable
+```
+static bool inited; 
+static bool running; 
+static bool eof_reached;
 ```
 
-This function delivers the **next animation frame** for playback.
-
-Internally:
-
-A background task continuously prepares frames
-Synchronization and data integrity are fully handled by the system
-
-From the player’s point of view, this behaves like a blocking frame queue.
-
----
-
-## 2. Initialization
-
-### Initialization (once, at startup)
-
-Player code **does not open files directly**.
-Initialization is handled at the system level:
-
-```c
-frame_system_init("/sdcard/frame.bin");
+```  
+┌──────────┐ 
+│ UNINIT   │ ◄────────────────────────────────────────┐ 
+│ inited=0 │                                          │
+│ running=0│                                          │
+│ eof=0    │                                          │
+└────┬─────┘                                          │
+     │                                                │
+     │   frame_system_init()                          │
+     │                                                │
+     ▼                                                │
+┌──────────┐      read_frame()                        │
+│ INITED   │ ──────────┐                              │
+│ inited=1 │           ▼                              │
+│ running=1│      ┌──────────┐                        │ 
+│ eof=0    │      │  ACTIVE  │                        │
+│ cmd=NONE │      │ inited=1 │                        │ 
+└──────────┘      │ running=1│                        │
+       ▲          │ eof=0    │                        │ 
+       │          └────┬─────┘                        │ 
+       │               │                              │ 
+       │               │                              │ 
+       │     read_frame() (EOF)                       │ 
+       │               │                              │ 
+       │               ▼                              │
+       │            ┌──────────┐                      │
+       │            │ EOF      │                      │
+       │            │ REACHED  │                      │
+       │            │ inited=1 │                      │ 
+       │            │ running=1│                      │ 
+       │            │ eof=1    │                      │
+       │            └────┬─────┘                      │
+       │                 │                            │
+       │  frame_reset()  │   frame_system_deinit()    │
+       └─────────────────┘────────────────────────────│ 
+                                                      │
+                                                      │
+                                                      │
+┌──────────┐                                          │
+│ STOPPED  │                                          │
+│ inited=1 │  frame_system_deinit()                   │
+│ running=0│ ─────────────────────────────────────────┘
+│ eof=0/1  │
+└──────────┘
 ```
 
-This must be called **before** any call to `read_frame()`.
+## 2. API
+
+### frame_system_init(const char* control_path, const char* frame_path)
+
+在 UNINIT 狀態下：
+
+成功 → 進入 INITED 狀態
+
+失敗 → 停留在 UNINIT 狀態
+
+- inited = 0 → 1
+
+- running = 0 → 1
+
+- eof = 0 → 0
 
 
-### Key points
+在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
 
-* Call `read_frame()` **once per playback tick**
-* Each call advances the stream by **exactly one frame**
-* Do not call it multiple times per frame
-
----
-
-## 3. What Happens When read_frame() Is Called
-
-When the player calls `read_frame()`:
-
-1. The function waits until the next frame has been fully prepared
-2. The frame is copied into the caller-provided buffer
-3. The internal buffer is released so the next frame can be loaded
-
-### Guarantees
-
-* The returned frame is complete and valid
-* Frame order is preserved
-* No partial or corrupted data is ever returned
-
-### Blocking behavior
-
-* `read_frame()` may block briefly if the next frame is not ready yet
-* Under normal operation, this delay is well below one frame interval
-
-This blocking is intentional and required to maintain correctness.
+拒絕操作，return ESP_ERR_INVALID_STATE
 
 ---
 
+### read_frame(table_frame_t* playerbuffer)
 
+在 INITED 狀態下：
+
+成功 → 進入 ACTIVE 狀態
+
+錯誤 → 進入 STOPPED 狀態
+
+在 ACTIVE 狀態下：
+
+情況1：讀取成功
+
+停留在 ACTIVE 狀態
+
+變數無變化
+
+情況2：讀取到 EOF
+
+eof = 0 → 1
+
+情況3：讀取錯誤
+
+進入 STOPPED 狀態
+
+變數：running = 1 → 0
+
+在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
+
+拒絕操作，return ESP_ERR_INVALID_STATE
+
+---
+
+### frame_reset(void)
+
+在 INITED / ACTIVE / EOF_REACHED 狀態下：
+
+重置到第0幀，SD任務處理後進入 INITED 狀態
+
+eof 1/0 → 0
+
+在 UNINIT / STOPPED 狀態下：
+
+返回 ESP_ERR_INVALID_STATE
+
+---
+
+### frame_system_deinit(void)
+
+在所有狀態下：
+
+直接進入 UNINIT
+
+inited = 1 → 0
+
+---
+
+### get_sd_card_id()
+
+讀取SD卡label回傳ID
+有SD卡 → 回傳1~31
+無SD卡 → 回傳 0
