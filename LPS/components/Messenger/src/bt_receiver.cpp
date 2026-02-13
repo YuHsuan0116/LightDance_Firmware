@@ -71,6 +71,8 @@ typedef struct {
 } action_slot_t;
 
 static action_slot_t s_slots[MAX_CONCURRENT_ACTIONS];
+static bool s_visual_ack_done[MAX_CONCURRENT_ACTIONS] = {false};
+static esp_timer_handle_t s_led_timer = NULL;
 static struct {
     uint8_t cmd_id;
     uint8_t cmd_type;
@@ -237,7 +239,7 @@ static void send_ack_task(void *arg) {
 }
 
 // ==========================================
-// Part 2: Fast RX Driver & ISR (Unchanged)
+// Part 2: Fast RX Driver & ISR
 // ==========================================
 static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
     int64_t now_us = esp_timer_get_time();
@@ -317,11 +319,19 @@ static void trigger_ack_task(uint8_t my_id, uint8_t cmd_id, uint8_t cmd_type, ui
         xTaskCreate(send_ack_task, "ack_task", 4096, params, 5, NULL);
     }
 }
+static void IRAM_ATTR led_timer_cb(void* arg) {
+    Player::getInstance().stop();
+}
+
 static void IRAM_ATTR timer_timeout_cb(void* arg) {
     action_slot_t* slot = (action_slot_t*)arg;
     uint8_t cmd = slot->ctx.target_cmd;
     uint8_t test_data[3];
     memcpy(test_data, (const uint8_t*)slot->ctx.data, 3);
+    int slot_id = slot - s_slots;
+    if (slot_id >= 0 && slot_id < MAX_CONCURRENT_ACTIONS) {
+        s_visual_ack_done[slot_id] = false;
+    }
     ESP_LOGD(TAG,">> [ACTION TRIGGERED] CMD: 0x%02X\n", cmd);
     switch(cmd) {
         case 0x01:
@@ -344,8 +354,18 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
             }
             break;
         case 0x06:
-            esp_timer_stop(s_slots[test_data[0]].timer_handle);
-            ESP_LOGD(TAG, "CMD 0x%02X Canceled! CMD_ID = %d", s_slots[test_data[0]].ctx.target_cmd, test_data[0]);
+            {
+                uint8_t target_id = test_data[0];
+                if (target_id < MAX_CONCURRENT_ACTIONS) {
+                    esp_timer_stop(s_slots[target_id].timer_handle);
+                    s_visual_ack_done[target_id] = false;
+                    if (s_slots[target_id].ctx.target_cmd == 0x01) {
+                        esp_timer_stop(s_led_timer);
+                        Player::getInstance().stop();
+                    }
+                    ESP_LOGD(TAG, "CMD 0x%02X Canceled! CMD_ID = %d", s_slots[target_id].ctx.target_cmd, target_id);
+                }
+            }
             break;
         case 0x07:{
             int8_t state = Player::getInstance().getState();
@@ -374,6 +394,8 @@ static void sync_process_task(void* arg) {
     uint8_t current_cmd = 0;
     uint64_t current_mask = 0;
     uint8_t current_data[3] = {0, 0, 0};
+    uint32_t current_prep_time = 0;
+    int64_t sum_rssi = 0;
     int64_t sum_target = 0;
     int count = 0;
     bool collecting = false;
@@ -395,8 +417,10 @@ static void sync_process_task(void* arg) {
                 current_data[0] = pkt.data[0];
                 current_data[1] = pkt.data[1];
                 current_data[2] = pkt.data[2];
-                sum_target = 0;
-                count = 0;
+                current_prep_time = pkt.prep_time;    
+                sum_rssi = pkt.rssi;           
+                sum_target = (pkt.rx_time_us + pkt.delay_val);
+                count = 1;
                 window_start_time = now;
                 window_expired = false;
             }
@@ -404,6 +428,7 @@ static void sync_process_task(void* arg) {
                 if (pkt.cmd_id == current_cmd_id) {
                     if(now < (window_start_time + s_config.sync_window_us)) {
                         sum_target += (pkt.rx_time_us + pkt.delay_val);
+                        sum_rssi += pkt.rssi;
                         count++;
                     }
                 } else {
@@ -411,6 +436,8 @@ static void sync_process_task(void* arg) {
                     if(count > 0) {
                         int64_t final_target = sum_target / count;
                         int64_t wait_us = final_target - now;
+                        int8_t avg_rssi = (int8_t)(sum_rssi / count);
+                        last_processed_id = current_cmd_id;
                         if(wait_us > 500) {
                             action_slot_t* target_slot = &s_slots[current_cmd_id];
                             target_slot->ctx.target_cmd = current_cmd;
@@ -418,15 +445,22 @@ static void sync_process_task(void* arg) {
                             memcpy((void*)target_slot->ctx.data, current_data, 3);
                             esp_timer_stop(target_slot->timer_handle);
                             esp_timer_start_once(target_slot->timer_handle, wait_us);
-                            last_processed_id = current_cmd_id;
+                            if (!s_visual_ack_done[current_cmd_id]) {
+                                ESP_LOGI(TAG, "LOCKED -> ID:%d, CMD:0x%02X, AvgRSSI:%d dBm (Cnt:%d), Delay:%lld ms", 
+                                         current_cmd_id, current_cmd, avg_rssi, count, wait_us/1000);
+                                if (current_cmd == 0x01 && current_prep_time > 0) {
+                                    Player::getInstance().test(255, 0, 0); 
+                                    esp_timer_stop(s_led_timer); 
+                                    esp_timer_start_once(s_led_timer, current_prep_time);
+                                }
+                                s_visual_ack_done[current_cmd_id] = true;
+                            }
                             if (current_cmd != 0x07) {
                                 s_last_locked_cmd.cmd_id = current_cmd_id;
                                 s_last_locked_cmd.cmd_type = current_cmd;
                                 s_last_locked_cmd.original_delay = (uint32_t)wait_us;
                                 s_last_locked_cmd.lock_timestamp = esp_timer_get_time();
                             }
-                            ESP_LOGD(TAG, "CMD 0x%02X Locked! Delay: %lld us", current_cmd, wait_us);
-                            // trigger_ack_task(s_config.my_player_id, current_cmd_id, current_cmd, (uint32_t)wait_us);
                         }
                     }
                     collecting = true;
@@ -436,6 +470,8 @@ static void sync_process_task(void* arg) {
                     current_data[0] = pkt.data[0];
                     current_data[1] = pkt.data[1];
                     current_data[2] = pkt.data[2];
+                    current_prep_time = pkt.prep_time;
+                    sum_rssi = pkt.rssi;
                     window_start_time = now;
                     window_expired = false;
                     sum_target = (pkt.rx_time_us + pkt.delay_val);
@@ -450,6 +486,8 @@ static void sync_process_task(void* arg) {
                 if(count > 0) {
                      int64_t final_target = sum_target / count;
                      int64_t wait_us = final_target - now;
+                     int8_t avg_rssi = (int8_t)(sum_rssi / count);
+                     last_processed_id = current_cmd_id;
                      if(wait_us > 500) {
                          action_slot_t* target_slot = &s_slots[current_cmd_id];
                          if(target_slot != NULL) {
@@ -458,10 +496,17 @@ static void sync_process_task(void* arg) {
                              memcpy((void*)target_slot->ctx.data, current_data, 3);
                              esp_timer_stop(target_slot->timer_handle);
                              esp_timer_start_once(target_slot->timer_handle, wait_us);
-                             last_processed_id = current_cmd_id;
-                             
-                             ESP_LOGD(TAG, "CMD 0x%02X Locked (Timeout)! Delay: %lld us", current_cmd, wait_us);
-                            //  trigger_ack_task(s_config.my_player_id, current_cmd_id, current_cmd, (uint32_t)wait_us);
+                             if (!s_visual_ack_done[current_cmd_id]) {
+                                 ESP_LOGI(TAG, "LOCKED -> ID:%d, CMD:0x%02X, AvgRSSI:%d dBm (Cnt:%d), Delay:%lld ms", 
+                                          current_cmd_id, current_cmd, avg_rssi, count, wait_us/1000);
+                                 
+                                 if (current_cmd == 0x01 && current_prep_time > 0) {
+                                     Player::getInstance().test(255, 0, 0);
+                                     esp_timer_stop(s_led_timer);
+                                     esp_timer_start_once(s_led_timer, current_prep_time);
+                                 }
+                                 s_visual_ack_done[current_cmd_id] = true;
+                             }
                          }
                      }
                 }
@@ -488,6 +533,16 @@ esp_err_t bt_receiver_init(const bt_receiver_config_t* config) {
         timer_args.arg = (void*)&s_slots[i];
         esp_timer_create(&timer_args, &s_slots[i].timer_handle);
     }
+    
+    esp_timer_create_args_t led_timer_args = {
+        .callback = &led_timer_cb,
+        .arg = NULL,
+        .dispatch_method = ESP_TIMER_TASK,
+        .name = "prep_led_tmr",
+        .skip_unhandled_events = false
+    };
+    esp_timer_create(&led_timer_args, &s_led_timer);
+
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
     esp_bt_controller_init(&bt_cfg);
     esp_bt_controller_enable(ESP_BT_MODE_BLE);
@@ -522,5 +577,6 @@ esp_err_t bt_receiver_stop(void) {
     for(int i = 0; i < MAX_CONCURRENT_ACTIONS; i++) {
         if(s_slots[i].timer_handle) esp_timer_stop(s_slots[i].timer_handle);
     }
+    if (s_led_timer) esp_timer_stop(s_led_timer);
     return ESP_OK;
 }
