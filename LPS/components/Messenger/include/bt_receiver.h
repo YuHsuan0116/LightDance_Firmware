@@ -30,7 +30,11 @@ typedef struct {
     uint32_t sync_window_us;    
     uint32_t queue_size;        
 } bt_receiver_config_t;
-
+typedef struct {
+    uint8_t cmd_type;
+    uint8_t data[3];
+} sys_cmd_msg_t;
+extern QueueHandle_t sys_cmd_queue;
 esp_err_t bt_receiver_init(const bt_receiver_config_t *config);
 esp_err_t bt_receiver_start(void);
 esp_err_t bt_receiver_stop(void);
