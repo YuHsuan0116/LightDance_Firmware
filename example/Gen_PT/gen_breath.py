@@ -9,7 +9,7 @@ OF_channel = [
 Strip_channel = [10, 0, 0, 0, 0, 0, 0, 0]  # Strip 0-7的LED數量
 
 VERSION_MAJOR = 1
-VERSION_MINOR = 1
+VERSION_MINOR = 2
 COLOR_MAP = {
     'g': (255, 0, 0),
     'r': (0, 255, 0),
@@ -52,10 +52,10 @@ with open("control.dat", "wb") as control_file:
         timestamp = k * time_interval
         control_data.extend(struct.pack('<I', timestamp))
     
-    #checksum = calculate_checksum(control_data)
+    checksum = calculate_checksum(control_data)
     
     control_file.write(control_data)
-    #control_file.write(struct.pack('<I', checksum))
+    control_file.write(struct.pack('<I', checksum))
 
 # 生成 frame.dat
 with open("frame.dat", "wb") as frame_file:
