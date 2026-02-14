@@ -34,6 +34,7 @@ typedef struct {
 esp_err_t bt_receiver_init(const bt_receiver_config_t *config);
 esp_err_t bt_receiver_start(void);
 esp_err_t bt_receiver_stop(void);
+esp_err_t bt_receiver_deinit(void);
 
 #ifdef __cplusplus
 }
