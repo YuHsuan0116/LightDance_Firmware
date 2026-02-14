@@ -31,19 +31,6 @@ static bool inited = false;
 static bool running = false;
 static bool eof_reached = false;
 
-static const struct {
-    const char* label;
-    uint8_t id;
-} sd_label_map[] = {
-    {"LPS01", 1}, {"LPS02", 2}, {"LPS03", 3}, {"LPS04", 4}, {"LPS05", 5},
-    {"LPS06", 6}, {"LPS07", 7}, {"LPS08", 8}, {"LPS09", 9}, {"LPS10", 10},
-    {"LPS11", 11}, {"LPS12", 12}, {"LPS13", 13}, {"LPS14", 14}, {"LPS15", 15},
-    {"LPS16", 16}, {"LPS17", 17}, {"LPS18", 18}, {"LPS19", 19}, {"LPS20", 20},
-    {"LPS21", 21}, {"LPS22", 22}, {"LPS23", 23}, {"LPS24", 24}, {"LPS25", 25},
-    {"LPS26", 26}, {"LPS27", 27}, {"LPS28", 28}, {"LPS29", 29}, {"LPS30", 30},
-    {"LPS31", 31}
-};
-
 /* ================= SD task command ================= */
 
 typedef enum {
@@ -227,9 +214,11 @@ esp_err_t frame_reset(void) {
 
 /* ---- deinit frame system ---- */
 
-void frame_system_deinit(void) {
-    if(!inited)
-        return;
+esp_err_t frame_system_deinit(void) {
+    if(!inited) {
+        ESP_LOGW(TAG, "frame_system_deinit called when not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     running = false;
 
@@ -248,8 +237,10 @@ void frame_system_deinit(void) {
     sem_free = sem_ready = NULL;
     sd_task = NULL;
     inited = false;
+    eof_reached = false;
 
     ESP_LOGI(TAG, "frame system deinit");
+    return ESP_OK;
 }
 
 /* ---- end of file ---- */
@@ -273,11 +264,15 @@ int get_sd_card_id(void) {
     if(res != FR_OK || volume_label[0] == '\0') {
         return 0;
     }
+    if(strncmp(volume_label, "LPS", 3) != 0) {
+        return 0;
+    }
     
-    for(int i = 0; i < sizeof(sd_label_map)/sizeof(sd_label_map[0]); i++) {
-        if(strcmp(volume_label, sd_label_map[i].label) == 0) {
-            return sd_label_map[i].id;  //return 1~31
-        }
+    char* num_str = volume_label + 3;
+    int id = atoi(num_str);
+    
+    if(id >= 1 && id <= 31) {
+        return id;
     }
     
     return 0;
