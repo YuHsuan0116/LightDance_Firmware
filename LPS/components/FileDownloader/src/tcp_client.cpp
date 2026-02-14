@@ -86,6 +86,7 @@ static void wifi_init_sta(void)
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_start();
+    esp_wifi_set_ps(WIFI_PS_NONE);
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 }
@@ -127,7 +128,12 @@ static esp_err_t download_file(int sock, const char* filename) {
     }
 
     // 3. Receive file data in chunks and write to SD
-    uint8_t buf[4096];
+    uint8_t *buf = (uint8_t *)malloc(4096);
+    if (buf == NULL) {
+        ESP_LOGE(TAG, "Failed to allocate buffer");
+        sd_writer_close();
+        return ESP_FAIL;
+    }
     size_t remaining = file_size;
     
     while (remaining > 0) {
@@ -147,6 +153,7 @@ static esp_err_t download_file(int sock, const char* filename) {
         remaining -= n;
     }
 
+    free(buf);
     sd_writer_close();
     ESP_LOGI(TAG, "Download complete: %s", filename);
     return ESP_OK;
