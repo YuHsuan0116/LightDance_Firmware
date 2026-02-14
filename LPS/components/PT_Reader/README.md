@@ -1,6 +1,6 @@
-# Pattern Table v1.1 Guide 
+# Pattern Table Reader System v1.2 Guide 
 
-This document is written for the player team. It explains what the frame system provides, how to use it correctly, and what assumptions the system makes. 
+This document explains what the pattern table reader system provides, how to use it correctly, and what assumptions the system makes. 
 
 ## 1. Finite State Machine
 
@@ -11,138 +11,141 @@ static bool running;
 static bool eof_reached;
 ```
 
-```  
-┌──────────┐ 
-│ UNINIT   │ ◄────────────────────────────────────────┐ 
-│ inited=0 │                                          │
-│ running=0│                                          │
-│ eof=0    │                                          │
-└────┬─────┘                                          │
-     │                                                │
-     │   frame_system_init()                          │
-     │                                                │
-     ▼                                                │
-┌──────────┐      read_frame()                        │
-│ INITED   │ ──────────┐                              │
-│ inited=1 │           ▼                              │
-│ running=1│      ┌──────────┐                        │ 
-│ eof=0    │      │  ACTIVE  │                        │
-│ cmd=NONE │      │ inited=1 │                        │ 
-└──────────┘      │ running=1│                        │
-       ▲          │ eof=0    │                        │ 
-       │          └────┬─────┘                        │ 
-       │               │                              │ 
-       │               │                              │ 
-       │     read_frame() (EOF)                       │ 
-       │               │                              │ 
-       │               ▼                              │
-       │            ┌──────────┐                      │
-       │            │ EOF      │                      │
-       │            │ REACHED  │                      │
-       │            │ inited=1 │                      │ 
-       │            │ running=1│                      │ 
-       │            │ eof=1    │                      │
-       │            └────┬─────┘                      │
-       │                 │                            │
-       │  frame_reset()  │   frame_system_deinit()    │
-       └─────────────────┘────────────────────────────│ 
-                                                      │
-                                                      │
-                                                      │
-┌──────────┐                                          │
-│ STOPPED  │                                          │
-│ inited=1 │  frame_system_deinit()                   │
-│ running=0│ ─────────────────────────────────────────┘
-│ eof=0/1  │
-└──────────┘
+The finite state machine of pattern table reader system:
+
+```mermaid
+stateDiagram-v2
+direction TB
+    
+    UNINIT --> INITED: frame_system_init()
+
+    INITED --> ACTIVE: read_frame()
+
+    note right of INITED: frame_reset() remain in INITED
+    
+    note right of ACTIVE: read_frame() remain in ACTIVE
+    
+    ACTIVE --> EOF: read_frame() return EOF
+
+    ACTIVE --> INITED: frame_reset()
+
+    ACTIVE --> UNINIT: frame_system_deinit()
+
+    note right of EOF: read_frame() remain in EOF
+    
+    EOF --> INITED: frame_reset()
+    
+    EOF --> UNINIT: frame_system_deinit()
+
+    INITED --> UNINIT: frame_system_deinit()
+
+    STOPPED
+
+    note right of STOPPED: any error occur
 ```
 
-## 2. API
+Description of each state :
 
-### frame_system_init(const char* control_path, const char* frame_path)
 
-- 在 UNINIT 狀態下：
+|  State   | Description  | Static variable  |
+|  :---:  | :---  | :---  |
+| UNINIT  | Pattern table reader system not yet initialize | inited = 0 <br> running = 0 <br> eof_reached = 0 |
+| INITED  | Pattern table reader system inited, ready to read | inited = 1 <br> running = 1 <br> eof_reached = 0 |
+| ACTIVE  | System is reading frame | inited = 1 <br> running = 1 <br> eof_reached = 0 |
+| EOF  | Frame reader reach end of file in frame.dat | inited = 1 <br> running = 1 <br> eof_reached = 1 |
+| STOPPED  | System deinitialized, resources released | inited = 0 <br> running = 0 <br> eof_reached = 0 |
 
-    - 成功 → 進入 INITED 狀態
 
-    - 失敗 → 停留在 UNINIT 狀態
+## 2. FSM API
 
-    - inited = 0 → 1
+### 1. frame_system_init(const char* control_path, const char* frame_path)
 
-    - running = 0 → 1
+Initialize the pattern table reader system
 
-- 在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | INITED | ESP_OK |
+| INITED  | INITED | ESP_ERR_INVALID_STATE |
+| ACTIVE  | ACTIVE | ESP_ERR_INVALID_STATE |
+| EOF  | EOF | ESP_ERR_INVALID_STATE |
+| STOPPED  | STOPPED | ESP_ERR_INVALID_STATE |
 
-    - 拒絕操作，return ESP_ERR_INVALID_STATE
+<br>
 
----
+- Detail Error Code Reference
 
-### read_frame(table_frame_t* playerbuffer)
+|  Return type   |  Description |
+|  :---  | :---  |
+| ESP_ERR_INVALID_STATE  | System already initialized (inited = True) |
+| ESP_ERR_INVALID_ARG  | Invalid control_path or frame_path |
+| ESP_ERR_NOT_FOUND  | control.dat or frame.dat missing on SD card |
+| ESP_ERR_INVALID_RESPONSE  | control.dat format error (version mismatch or invalid values) |
+| ESP_ERR_NO_MEM  | Out of memory |
+| ESP_ERR_INVALID_SIZE | Calculated frame size exceeds FRAME_RAW_MAX_SIZE |
 
-- 在 INITED 狀態下：
-
-    - 成功 → 進入 ACTIVE 狀態
-
-    - 錯誤 → 進入 STOPPED 狀態
-
-- 在 ACTIVE 狀態下：
-
-    - 情況1：讀取成功
-
-        - 停留在 ACTIVE 狀態
-
-        - 變數無變化
-
-    - 情況2：讀取到 EOF
-
-        - eof_reached = 0 → 1
-
-    - 情況3：讀取錯誤
-
-        - 進入 STOPPED 狀態
-
-        - running = 1 → 0
-
-- 在 INITED / ACTIVE / EOF_REACHED / STOPPED 狀態下：
-
-    - 拒絕操作，return ESP_ERR_INVALID_STATE
 
 ---
 
-### frame_reset(void)
+### 2. read_frame(table_frame_t* playerbuffer)
 
-- 在 INITED / ACTIVE / EOF_REACHED 狀態下：
+Reading next frame data
 
-    - 重置到第0幀，SD任務處理後進入 INITED 狀態
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | UNINIT | ESP_ERR_INVALID_STATE |
+| INITED  | ACTIVE | ESP_OK |
+| ACTIVE  | ACTIVE | ESP_OK |
+| ACTIVE  | EOF | ESP_ERR_NOT_FOUND |
+| EOF  | EOF | ESP_ERR_NOT_FOUND |
+| STOPPED  | STOPPED | ESP_ERR_INVALID_STATE |
 
-    - eof_reached 1/0 → 0
+<br>
 
-- 在 UNINIT / STOPPED 狀態下：
+- Detail Error Code Reference
 
-    - 返回 ESP_ERR_INVALID_STATE
+|  Return type   |  Description |
+|  :---  | :---  |
+| ESP_ERR_INVALID_STATE  | Called in UNINIT or STOPPED state |
+| ESP_ERR_NOT_FOUND  | No more frames to read, system enters EOF state |
+| ESP_ERR_INVALID_ARG  | Invalid playerbuffer or NULL |
+| ESP_ERR_INVALID_CRC  | Checksum mismatch in frame.dat |
 
 ---
 
-### frame_system_deinit(void)
+### 3. frame_reset(void)
 
-- 在所有狀態下：
+Reset reader pointer back to start of frame.dat (frame 0)
 
-    - 直接進入 UNINIT
-
-    - inited = 1 → 0
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | UNINIT | ESP_ERR_INVALID_STATE |
+| INITED  | INITED | ESP_OK |
+| ACTIVE  | INITED | ESP_OK |
+| EOF  | INITED | ESP_OK |
+| STOPPED  | STOPPED | ESP_ERR_INVALID_STATE |
 
 ---
+
+### 4. frame_system_deinit(void)
+
+Leave and close the pattern table reader system, release resource
+
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | UNINIT | ESP_ERR_INVALID_STATE |
+| INITED  | UNINIT | ESP_OK |
+| ACTIVE  | UNINIT | ESP_OK |
+| EOF  | UNINIT | ESP_OK |
+| STOPPED  | UNINIT | ESP_OK |
+
+## 3. Other API
 
 ### is_eof_reached(void)
 
-- 回傳 eof_reached
-
----
+- return eof_reached ( True / False )
 
 ### get_sd_card_id(void)
 
-讀取SD卡label回傳ID
+- return ID 1~31 if label of SD card is "LPS01" ~ "LPS31"
 
-- 有SD卡 → 回傳1~31
-
-- 無SD卡 → 回傳 0
+- return 0 for other cases
