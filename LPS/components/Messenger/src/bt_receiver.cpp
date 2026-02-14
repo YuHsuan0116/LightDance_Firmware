@@ -379,6 +379,22 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
                              state);
             break;
         }
+        case 0x08:
+        case 0x09:
+            if (sys_cmd_queue != NULL) {
+                sys_cmd_msg_t msg;
+                msg.cmd_type = cmd;
+                msg.data[0] = test_data[0];
+                msg.data[1] = test_data[1];
+                msg.data[2] = test_data[2];
+                BaseType_t ret = xQueueSend(sys_cmd_queue, &msg, 0);
+                if (ret == pdPASS) {
+                    ESP_LOGD(TAG, "Sent System CMD (0x%02X) to Task Queue", cmd);
+                } else {
+                    ESP_LOGE(TAG, "Failed to send CMD to Queue! (Queue Full)");
+                }
+            }
+            break;
         default:
             break;
     }
@@ -386,7 +402,6 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
 
 static void sync_process_task(void* arg) {
     ble_rx_packet_t pkt;
-    int last_processed_id = -1;
     uint8_t current_cmd_id = 0;
     uint8_t current_cmd = 0;
     uint64_t current_mask = 0;
@@ -404,8 +419,6 @@ static void sync_process_task(void* arg) {
     while(s_is_running) {
         if(xQueueReceive(s_adv_queue, &pkt, pdMS_TO_TICKS(10)) == pdTRUE) {
             int64_t now = esp_timer_get_time();
-            if(pkt.cmd_id == last_processed_id) continue;
-
             if(!collecting) {
                 collecting = true;
                 current_cmd_id = pkt.cmd_id;
@@ -434,7 +447,6 @@ static void sync_process_task(void* arg) {
                         int64_t final_target = sum_target / count;
                         int64_t wait_us = final_target - now;
                         int8_t avg_rssi = (int8_t)(sum_rssi / count);
-                        last_processed_id = current_cmd_id;
                         if(wait_us > 500) {
                             action_slot_t* target_slot = &s_slots[current_cmd_id];
                             target_slot->ctx.target_cmd = current_cmd;
@@ -484,7 +496,6 @@ static void sync_process_task(void* arg) {
                      int64_t final_target = sum_target / count;
                      int64_t wait_us = final_target - now;
                      int8_t avg_rssi = (int8_t)(sum_rssi / count);
-                     last_processed_id = current_cmd_id;
                      if(wait_us > 500) {
                          action_slot_t* target_slot = &s_slots[current_cmd_id];
                          if(target_slot != NULL) {
