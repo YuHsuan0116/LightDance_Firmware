@@ -10,7 +10,9 @@
 
 /* ================= config ================= */
 
-#define FRAME_FILE_HEADER_SIZE 2  // uint16 version
+static const uint8_t EXPECTED_VERSION_MAJOR = 1;
+static const uint8_t EXPECTED_VERSION_MINOR = 1;
+
 #define FRAME_RAW_MAX_SIZE 8192
 #define CHECKSUM_SIZE 4  // uint8 (reserved)
 
@@ -59,11 +61,31 @@ esp_err_t frame_reader_init(const char* path) {
         return ESP_ERR_NOT_FOUND;
     }
 
-    /* skip frame.dat header */
-    if(f_lseek(&fp, FRAME_FILE_HEADER_SIZE) != FR_OK) {
+    /* -------- check version -------- */
+
+    uint8_t version_bytes[2];
+    UINT br;
+    fr = f_read(&fp, version_bytes, 2, &br);
+    
+    if(fr != FR_OK || br != 2) {
+        ESP_LOGE(TAG, "Failed to read version header");
         f_close(&fp);
         return ESP_FAIL;
     }
+    
+    uint8_t major = version_bytes[0];
+    uint8_t minor = version_bytes[1];
+    
+    if(major != EXPECTED_VERSION_MAJOR || minor != EXPECTED_VERSION_MINOR) {
+        ESP_LOGE(TAG, "Version mismatch! Expected %d.%d, got %d.%d", 
+                 EXPECTED_VERSION_MAJOR, EXPECTED_VERSION_MINOR, major, minor);
+        f_close(&fp);
+        return ESP_FAIL;
+    }
+    
+    ESP_LOGI(TAG, "frame.dat version: %d.%d (OK)", major, minor);
+
+    /* -------- calculate frame size  -------- */
 
     g_frame_size = 4 +             /* start_time */
                    1 +             /* fade */
@@ -96,7 +118,7 @@ esp_err_t frame_reader_reset(void) {
     if(!opened)
         return ESP_ERR_INVALID_STATE;
 
-    if(f_lseek(&fp, FRAME_FILE_HEADER_SIZE) != FR_OK)
+    if(f_lseek(&fp, 2) != FR_OK) //skip version header
         return ESP_FAIL;
 
     return ESP_OK;
@@ -185,9 +207,18 @@ esp_err_t frame_reader_read(table_frame_t* out) {
     }
 
     /* -------- checksum (reserved, consume only) -------- */
-    uint8_t chk = *p;
-    (void)chk; /* currently unused */
+    uint32_t read_checksum = 0;
+    read_checksum |= (uint32_t)p[0];
+    read_checksum |= (uint32_t)p[1] << 8;
+    read_checksum |= (uint32_t)p[2] << 16;
+    read_checksum |= (uint32_t)p[3] << 24;
+
     p += CHECKSUM_SIZE;
+
+    if(read_checksum != sum){
+        ESP_LOGE(TAG, "checksum mismatch. read=%u calculate=%u", read_checksum, sum);
+        return ESP_ERR_INVALID_CRC;
+    }
 
     /* -------- final guard -------- */
     if((uint32_t)(p - raw) != g_frame_size) {
