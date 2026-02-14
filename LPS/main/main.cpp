@@ -1,6 +1,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 
 #include "bt_receiver.h"
 #include "esp_err.h"
@@ -10,9 +11,39 @@
 #include "readframe.h"
 #include "sd_logger.h"
 
+#include "esp_system.h"
+
+
 static const char* TAG = "APP";
 static bool frame_sys_ready = false;
-
+QueueHandle_t sys_cmd_queue = NULL;
+static void sys_cmd_task(void* arg) {
+    sys_cmd_msg_t msg;
+    
+    ESP_LOGI("SYS_TASK", "System Command Task Started.");
+    
+    while(1) {
+        if (xQueueReceive(sys_cmd_queue, &msg, portMAX_DELAY) == pdTRUE) {
+            switch(msg.cmd_type) {
+                case 0x08:
+                    ESP_LOGD("SYS_TASK", ">>> [UPLOAD] Command Received!");
+                    if(Player::getInstance().getState()!=1) Player::getInstance().stop();
+                    Player::getInstance().test(0, 255, 0);
+                    // switch to wifi
+                    break;
+                    
+                case 0x09:
+                    ESP_LOGD("SYS_TASK", ">>> [RESET] Command Received! Rebooting in 1s...");
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    // esp_restart();
+                    break;
+                    
+                default:
+                    break;
+            }
+        }
+    }
+}
 static void app_task(void* arg) {
     // (void)arg;
     ESP_LOGI(TAG, "app_task start, HWM=%u", uxTaskGetStackHighWaterMark(NULL));
@@ -57,6 +88,12 @@ static void app_task(void* arg) {
     Player::getInstance().init();
 
     vTaskDelay(pdMS_TO_TICKS(1000));
+    sys_cmd_queue = xQueueCreate(10, sizeof(sys_cmd_msg_t));
+    if (sys_cmd_queue != NULL) {
+        xTaskCreate(sys_cmd_task, "sys_cmd_task", 4096, NULL, 5, NULL);
+    } else {
+        ESP_LOGE(TAG, "Failed to create sys_cmd_queue!");
+    }
 
 #if LD_CFG_ENABLE_BT
     nvs_flash_init();
