@@ -76,11 +76,9 @@ esp_err_t frame_reset(void);
  *
  * 安全可重入
  */
-esp_err_t frame_system_deinit(void);
+void frame_system_deinit(void);
 
-int get_sd_card_id(void);
-
-bool is_eof_reached(void);
+const char* get_sd_card_id(void);
 
 #ifdef __cplusplus
 }
