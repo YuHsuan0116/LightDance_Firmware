@@ -524,3 +524,43 @@ esp_err_t bt_receiver_stop(void) {
     }
     return ESP_OK;
 }
+
+esp_err_t bt_receiver_deinit(void) {
+    // 1. 停止邏輯
+    if (s_is_running) {
+        bt_receiver_stop();
+    }
+
+    // 2. 註銷 Callback，停止接收新封包
+    esp_vhci_host_register_callback(NULL);
+
+    // 3. 先刪除 Task，確保沒有人會再去讀取 Queue
+    if (s_task_handle) {
+        vTaskDelete(s_task_handle);
+        s_task_handle = NULL;
+    }
+
+    // 4. 再刪除 Queue
+    if (s_adv_queue) {
+        vQueueDelete(s_adv_queue);
+        s_adv_queue = NULL;
+    }
+    
+    // 5. 釋放定時器資源
+    for(int i = 0; i < MAX_CONCURRENT_ACTIONS; i++) {
+        if(s_slots[i].timer_handle) {
+            esp_timer_delete(s_slots[i].timer_handle);
+            s_slots[i].timer_handle = NULL;
+        }
+    }
+
+    // 6. 關閉 Controller
+    esp_bt_controller_disable();
+    esp_bt_controller_deinit();
+    
+    // 7. 釋放藍牙記憶體 (關鍵步驟)
+    esp_bt_mem_release(ESP_BT_MODE_BTDM);
+
+    ESP_LOGI(TAG, "Receiver De-initialized");
+    return ESP_OK;
+}
