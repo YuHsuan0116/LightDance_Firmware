@@ -14,20 +14,26 @@ static vprintf_like_t default_vprintf = NULL;
 
 //vprintf（直接寫入檔案）
 static int sd_log_vprintf(const char *fmt, va_list l) {
+    //original terminal (UART)
     
     int ret_len = 0;
+    if (default_vprintf) {
+        va_list l_copy;
+        va_copy(l_copy, l);
+        ret_len = default_vprintf(fmt, l_copy);
+        va_end(l_copy);
+    }
+    
+    
     if (is_logging && log_file) {
-        va_list l_file;
-        va_copy(l_file, l);
-        int len = vfprintf(log_file, fmt, l_file);
-        va_end(l_file);
-        
+        int len = vfprintf(log_file, fmt, l);
+
         static int write_count = 0;
-        if(++write_count >= 10 || strchr(fmt, '\n')) {
+        if(++write_count >= 10) {
             fflush(log_file);
             write_count = 0;
         }
-        ret_len = len;
+        return len;
     }
     return ret_len;
 }
@@ -79,20 +85,25 @@ void sd_logger_deinit(void) {
 
 // direct into Log
 int sd_log_printf(const char* format, ...) {
-    if(!is_logging || !log_file) {
+    if(!is_logging) {
         return -1;
     }
 
+    char buffer[256];
     va_list args;
     va_start(args, format);
-    int len = vfprintf(log_file, format, args);
+    int len = vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
-    
-    static int write_count = 0;
-    if(++write_count >= 10 || strchr(format, '\n')) {
-        fflush(log_file);
-        write_count = 0;
+
+    if(len > 0 && len < (int)sizeof(buffer)) {
+        if(!is_logging || !log_file)
+            return -1;
+
+        va_list args;
+        va_start(args, format);
+        int len = vfprintf(log_file, format, args);
+        va_end(args);
+        return len;
     }
-    
-    return len;
+    return -4;
 }
