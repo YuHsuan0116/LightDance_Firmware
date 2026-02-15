@@ -1,70 +1,151 @@
-# Player API Guide 
+# Pattern Table Reader System v1.2 Guide 
 
-This document is written for the player team. It explains what the frame system provides, how to use it correctly, and what assumptions the system makes. 
+This document explains what the pattern table reader system provides, how to use it correctly, and what assumptions the system makes. 
 
+## 1. Finite State Machine
 
-
-## 1. API
-
-
-```c
-bool read_frame(table_frame_t *playerbuffer);
+define variable
+```
+static bool inited; 
+static bool running; 
+static bool eof_reached;
 ```
 
-This function delivers the **next animation frame** for playback.
+The finite state machine of pattern table reader system:
 
-Internally:
+```mermaid
+stateDiagram-v2
+direction TB
+    
+    UNINIT --> INITED: frame_system_init()
 
-A background task continuously prepares frames
-Synchronization and data integrity are fully handled by the system
+    INITED --> ACTIVE: read_frame()
 
-From the player’s point of view, this behaves like a blocking frame queue.
+    note right of INITED: frame_reset() remain in INITED
+    
+    note right of ACTIVE: read_frame() remain in ACTIVE
+    
+    ACTIVE --> EOF: read_frame() return EOF
 
----
+    ACTIVE --> INITED: frame_reset()
 
-## 2. Initialization
+    ACTIVE --> UNINIT: frame_system_deinit()
 
-### Initialization (once, at startup)
+    note right of EOF: read_frame() remain in EOF
+    
+    EOF --> INITED: frame_reset()
+    
+    EOF --> UNINIT: frame_system_deinit()
 
-Player code **does not open files directly**.
-Initialization is handled at the system level:
+    INITED --> UNINIT: frame_system_deinit()
 
-```c
-frame_system_init("/sdcard/frame.bin");
+    STOPPED
+
+    note right of STOPPED: any error occur
 ```
 
-This must be called **before** any call to `read_frame()`.
+Description of each state :
 
 
-### Key points
+|  State   | Description  | Static variable  |
+|  :---:  | :---  | :---  |
+| UNINIT  | Pattern table reader system not yet initialize | inited = 0 <br> running = 0 <br> eof_reached = 0 |
+| INITED  | Pattern table reader system inited, ready to read | inited = 1 <br> running = 1 <br> eof_reached = 0 |
+| ACTIVE  | System is reading frame | inited = 1 <br> running = 1 <br> eof_reached = 0 |
+| EOF  | Frame reader reach end of file in frame.dat | inited = 1 <br> running = 1 <br> eof_reached = 1 |
+| STOPPED  | System deinitialized, resources released | inited = 0 <br> running = 0 <br> eof_reached = 0 |
 
-* Call `read_frame()` **once per playback tick**
-* Each call advances the stream by **exactly one frame**
-* Do not call it multiple times per frame
+
+## 2. FSM API
+
+### 1. frame_system_init(const char* control_path, const char* frame_path)
+
+Initialize the pattern table reader system
+
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | INITED | ESP_OK |
+| INITED  | INITED | ESP_ERR_INVALID_STATE |
+| ACTIVE  | ACTIVE | ESP_ERR_INVALID_STATE |
+| EOF  | EOF | ESP_ERR_INVALID_STATE |
+| STOPPED  | STOPPED | ESP_ERR_INVALID_STATE |
+
+<br>
+
+- Detail Error Code Reference
+
+|  Return type   |  Description |
+|  :---  | :---  |
+| ESP_ERR_INVALID_STATE  | System already initialized (inited = True) |
+| ESP_ERR_INVALID_ARG  | Invalid control_path or frame_path |
+| ESP_ERR_NOT_FOUND  | control.dat or frame.dat missing on SD card |
+| ESP_ERR_INVALID_RESPONSE  | control.dat format error (version mismatch or invalid values) |
+| ESP_ERR_NO_MEM  | Out of memory |
+| ESP_ERR_INVALID_SIZE | Calculated frame size exceeds FRAME_RAW_MAX_SIZE |
+
 
 ---
 
-## 3. What Happens When read_frame() Is Called
+### 2. read_frame(table_frame_t* playerbuffer)
 
-When the player calls `read_frame()`:
+Reading next frame data
 
-1. The function waits until the next frame has been fully prepared
-2. The frame is copied into the caller-provided buffer
-3. The internal buffer is released so the next frame can be loaded
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | UNINIT | ESP_ERR_INVALID_STATE |
+| INITED  | ACTIVE | ESP_OK |
+| ACTIVE  | ACTIVE | ESP_OK |
+| ACTIVE  | EOF | ESP_ERR_NOT_FOUND |
+| EOF  | EOF | ESP_ERR_NOT_FOUND |
+| STOPPED  | STOPPED | ESP_ERR_INVALID_STATE |
 
-### Guarantees
+<br>
 
-* The returned frame is complete and valid
-* Frame order is preserved
-* No partial or corrupted data is ever returned
+- Detail Error Code Reference
 
-### Blocking behavior
-
-* `read_frame()` may block briefly if the next frame is not ready yet
-* Under normal operation, this delay is well below one frame interval
-
-This blocking is intentional and required to maintain correctness.
+|  Return type   |  Description |
+|  :---  | :---  |
+| ESP_ERR_INVALID_STATE  | Called in UNINIT or STOPPED state |
+| ESP_ERR_NOT_FOUND  | No more frames to read, system enters EOF state |
+| ESP_ERR_INVALID_ARG  | Invalid playerbuffer or NULL |
+| ESP_ERR_INVALID_CRC  | Checksum mismatch in frame.dat |
 
 ---
 
+### 3. frame_reset(void)
 
+Reset reader pointer back to start of frame.dat (frame 0)
+
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | UNINIT | ESP_ERR_INVALID_STATE |
+| INITED  | INITED | ESP_OK |
+| ACTIVE  | INITED | ESP_OK |
+| EOF  | INITED | ESP_OK |
+| STOPPED  | STOPPED | ESP_ERR_INVALID_STATE |
+
+---
+
+### 4. frame_system_deinit(void)
+
+Leave and close the pattern table reader system, release resource
+
+|  Current state   |  Next state   | Return |
+|  :---  | :---  | :---  |
+| UNINIT  | UNINIT | ESP_ERR_INVALID_STATE |
+| INITED  | UNINIT | ESP_OK |
+| ACTIVE  | UNINIT | ESP_OK |
+| EOF  | UNINIT | ESP_OK |
+| STOPPED  | UNINIT | ESP_OK |
+
+## 3. Other API
+
+### is_eof_reached(void)
+
+- return eof_reached ( True / False )
+
+### get_sd_card_id(void)
+
+- return ID 1~31 if label of SD card is "LPS01" ~ "LPS31"
+
+- return 0 for other cases

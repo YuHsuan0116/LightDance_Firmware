@@ -188,7 +188,7 @@ esp_err_t read_frame(table_frame_t* playerbuffer) {
         return ESP_FAIL;
 
     if(!running)
-        return ESP_ERR_NOT_FOUND;
+        return ESP_ERR_INVALID_STATE;
 
     memcpy(playerbuffer, &frame_buf, sizeof(table_frame_t));
 
@@ -214,9 +214,11 @@ esp_err_t frame_reset(void) {
 
 /* ---- deinit frame system ---- */
 
-void frame_system_deinit(void) {
-    if(!inited)
-        return;
+esp_err_t frame_system_deinit(void) {
+    if(!inited) {
+        ESP_LOGW(TAG, "frame_system_deinit called when not initialized");
+        return ESP_ERR_INVALID_STATE;
+    }
 
     running = false;
 
@@ -235,20 +237,43 @@ void frame_system_deinit(void) {
     sem_free = sem_ready = NULL;
     sd_task = NULL;
     inited = false;
+    eof_reached = false;
 
     ESP_LOGI(TAG, "frame system deinit");
+    return ESP_OK;
+}
+
+/* ---- end of file ---- */
+
+bool is_eof_reached(void) {
+    if (!inited) {
+        return false;
+    }
+    return eof_reached;
 }
 
 /* ---- get sd card id ---- */
-
-const char* get_sd_card_id(void) {
+int get_sd_card_id(void) {
     if(g_sd_card == NULL) {
-        return "0";  // no card
+        return 0;
     }
-    static char card_id[33];  // 32 chars + null terminator
     
-    snprintf(card_id, sizeof(card_id), "%d",
-             g_sd_card->cid.serial);
+    char volume_label[20];
+    FRESULT res = f_getlabel("0:", volume_label, NULL);
     
-    return card_id;
+    if(res != FR_OK || volume_label[0] == '\0') {
+        return 0;
+    }
+    if(strncmp(volume_label, "LPS", 3) != 0) {
+        return 0;
+    }
+    
+    char* num_str = volume_label + 3;
+    int id = atoi(num_str);
+    
+    if(id >= 1 && id <= 31) {
+        return id;
+    }
+    
+    return 0;
 }
