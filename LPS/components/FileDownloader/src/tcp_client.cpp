@@ -26,6 +26,8 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
+#define TCP_BUFFER_SIZE 16384
+
 static int s_retry_num = 0;
 
 /* Wi-Fi Event Handler */
@@ -82,11 +84,8 @@ static void wifi_init_sta(void)
 
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-    esp_wifi_start();
-    esp_wifi_set_mode(WIFI_MODE_STA);
-    esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
-    esp_wifi_start();
     esp_wifi_set_ps(WIFI_PS_NONE);
+    esp_wifi_start();
 
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 }
@@ -128,7 +127,7 @@ static esp_err_t download_file(int sock, const char* filename) {
     }
 
     // 3. Receive file data in chunks and write to SD
-    uint8_t *buf = (uint8_t *)malloc(4096);
+    uint8_t *buf = (uint8_t *)malloc(TCP_BUFFER_SIZE);
     if (buf == NULL) {
         ESP_LOGE(TAG, "Failed to allocate buffer");
         sd_writer_close();
@@ -137,8 +136,8 @@ static esp_err_t download_file(int sock, const char* filename) {
     size_t remaining = file_size;
     
     while (remaining > 0) {
-        size_t to_read = (remaining < sizeof(buf)) ? remaining : sizeof(buf);
-        int n = recv(sock, buf, to_read, 0);
+        size_t to_read = (remaining < TCP_BUFFER_SIZE) ? remaining : TCP_BUFFER_SIZE;
+        int n = recv_exact(sock, buf, to_read);
         if (n <= 0) {
             ESP_LOGE(TAG, "Socket error during download");
             sd_writer_close();
@@ -240,5 +239,5 @@ static void update_task_func(void *pvParameters) {
 }
 
 void tcp_client_start_update_task(void) {
-    xTaskCreate(update_task_func, "tcp_update", 8192, NULL, 5, NULL);
+    xTaskCreate(update_task_func, "tcp_update", 16384, NULL, 5, NULL);
 }
