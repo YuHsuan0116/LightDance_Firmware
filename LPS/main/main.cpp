@@ -1,6 +1,7 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/queue.h"
 
 #include "bt_receiver.h"
 #include "esp_err.h"
@@ -15,6 +16,7 @@
 
 static const char* TAG = "APP";
 static bool frame_sys_ready = false;
+QueueHandle_t main_msg_queue = NULL;
 
 static void app_task(void* arg) {
     // (void)arg;
