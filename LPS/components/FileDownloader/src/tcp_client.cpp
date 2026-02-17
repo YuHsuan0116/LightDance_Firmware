@@ -32,7 +32,9 @@ static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
 extern QueueHandle_t main_msg_queue;
-
+static esp_netif_t *s_wifi_netif = NULL;
+static esp_event_handler_instance_t instance_any_id = NULL;
+static esp_event_handler_instance_t instance_got_ip = NULL;
 static bool s_is_stopping = false;
 
 /* Wi-Fi Event Handler */
@@ -60,33 +62,51 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 /* Wi-Fi Initialization */
 static void wifi_init_sta(void)
 {
+    // Create the event group to handle Wi-Fi events
     s_wifi_event_group = xEventGroupCreate();
-
+    
+    // Init TCP/IP stack and event loop
     esp_netif_init();
     esp_event_loop_create_default();
-    esp_netif_create_default_wifi_sta();
 
+    // Create default Wi-Fi station
+    if (s_wifi_netif == NULL) {
+        s_wifi_netif = esp_netif_create_default_wifi_sta();
+    }
+
+    // Register event handlers for Wi-Fi and IP events
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     esp_wifi_init(&cfg);
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    esp_event_handler_instance_register(WIFI_EVENT,
-                                        ESP_EVENT_ANY_ID,
-                                        &event_handler,
-                                        NULL,
-                                        &instance_any_id);
-    esp_event_handler_instance_register(IP_EVENT,
-                                        IP_EVENT_STA_GOT_IP,
-                                        &event_handler,
-                                        NULL,
-                                        &instance_got_ip);
+    // Register event handlers for Wi-Fi and IP events
+    if (instance_any_id == NULL) {
+        esp_event_handler_instance_register(WIFI_EVENT,
+                                            ESP_EVENT_ANY_ID,
+                                            &event_handler,
+                                            NULL,
+                                            &instance_any_id);
+    }
+    
+    // Register the event handler for when the device gets an IP address
+    if (instance_got_ip == NULL) {
+        esp_event_handler_instance_register(IP_EVENT,
+                                            IP_EVENT_STA_GOT_IP,
+                                            &event_handler,
+                                            NULL,
+                                            &instance_got_ip);
+    }
 
+    // Reset retry count and flags
+    s_retry_num = 0;
+    s_is_stopping = false;
+
+    // Configure Wi-Fi connection settings
     wifi_config_t wifi_config = {};
     strcpy((char*)wifi_config.sta.ssid, TCP_WIFI_SSID);
     strcpy((char*)wifi_config.sta.password, TCP_WIFI_PASS);
     wifi_config.sta.threshold.authmode = WIFI_AUTH_WPA2_PSK;
 
+    // Set Wi-Fi mode to station and start Wi-Fi
     esp_wifi_set_mode(WIFI_MODE_STA);
     esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
     esp_wifi_set_ps(WIFI_PS_NONE);
@@ -98,8 +118,19 @@ static void wifi_init_sta(void)
 static void wifi_stop_cleanup(void) {
     s_is_stopping = true;
     esp_wifi_stop();
+    if (instance_any_id != NULL) {
+        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
+        instance_any_id = NULL;
+    }
+    if (instance_got_ip != NULL) {
+        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
+        instance_got_ip = NULL;
+    }
     esp_wifi_deinit();
-    vEventGroupDelete(s_wifi_event_group);
+    if (s_wifi_event_group != NULL) {
+        vEventGroupDelete(s_wifi_event_group);
+        s_wifi_event_group = NULL;
+    }
 }
 
 /* Helper function to receive exact number of bytes */
