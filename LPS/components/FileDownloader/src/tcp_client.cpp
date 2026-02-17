@@ -4,6 +4,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/queue.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -30,6 +31,10 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static int s_retry_num = 0;
 
+extern QueueHandle_t main_msg_queue;
+
+static bool s_is_stopping = false;
+
 /* Wi-Fi Event Handler */
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -37,7 +42,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        if (s_retry_num < 5) {
+        if (!s_is_stopping && s_retry_num < 5) {
             esp_wifi_connect();
             s_retry_num++;
             ESP_LOGI(TAG, "Retry to connect to the AP");
@@ -91,8 +96,10 @@ static void wifi_init_sta(void)
 }
 
 static void wifi_stop_cleanup(void) {
+    s_is_stopping = true;
     esp_wifi_stop();
     esp_wifi_deinit();
+    vEventGroupDelete(s_wifi_event_group);
 }
 
 /* Helper function to receive exact number of bytes */
@@ -233,6 +240,12 @@ static void update_task_func(void *pvParameters) {
     
     bt_receiver_init(&rx_cfg);
     bt_receiver_start();
+
+    if (main_msg_queue != NULL) {
+        int msg = 1;
+        xQueueSend(main_msg_queue, &msg, 0);
+        ESP_LOGI(TAG, "Message sent to main queue");
+    }
 
     ESP_LOGI(TAG, "=== Update Process Finished, Task Deleting ===");
     vTaskDelete(NULL);
