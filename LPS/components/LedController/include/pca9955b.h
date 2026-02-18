@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -6,6 +6,7 @@
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "esp_err.h"
+#include "ld_board.h"
 #include "ld_led_types.h"
 
 #ifdef __cplusplus
@@ -15,9 +16,9 @@ extern "C" {
 typedef struct {
     uint8_t command_byte;
     union {
-        uint8_t data[15]; /*!< Raw access to 15-byte channel color payload */
+        uint8_t data[LD_BOARD_PCA9955B_BUFFER_DATA_LEN]; /*!< Raw access to channel color payload */
         struct {
-            uint8_t ch[5][3]; /*!< logical mapping: 5 LEDs x 3 channels (R, G, B) */
+            uint8_t ch[LD_BOARD_PCA9955B_RGB_PER_IC][LD_BOARD_PCA9955B_COLOR_BYTES_PER_PIXEL]; /*!< logical mapping: RGB channels per device */
         };
     };
 } pca9955b_buffer_t;

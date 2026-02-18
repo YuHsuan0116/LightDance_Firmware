@@ -1,8 +1,9 @@
-#include "player_clock.h"
+﻿#include "player_clock.h"
 
 #include "esp_check.h"
 #include "esp_err.h"
 #include "esp_timer.h"
+#include "ld_config.h"
 
 static const char* TAG = "PlayerClock";
 
@@ -33,9 +34,9 @@ esp_err_t PlayerMetronome::init(TaskHandle_t _task, uint32_t _period_us) {
     task = _task;
     period_us = _period_us;
 
-    gptimer_config_t timer_config = {.clk_src = GPTIMER_CLK_SRC_DEFAULT,  // Select the default clock source
-                                     .direction = GPTIMER_COUNT_UP,       // Counting direction is up
-                                     .resolution_hz = 1 * 1000 * 1000,    // Resolution is 1 MHz, i.e., 1 tick equals 1 microsecond
+    gptimer_config_t timer_config = {.clk_src = GPTIMER_CLK_SRC_DEFAULT,                    // Select the default clock source
+                                     .direction = GPTIMER_COUNT_UP,                         // Counting direction is up
+                                     .resolution_hz = LD_CFG_PLAYER_GPTIMER_RESOLUTION_HZ,  // Resolution is 1 MHz, i.e., 1 tick equals 1 microsecond
 
                                      .intr_priority = 0,
                                      .flags = {.intr_shared = 0, .allow_pd = 0, .backup_before_sleep = 0}};
@@ -87,12 +88,12 @@ esp_err_t PlayerMetronome::deinit() {
 
     if(timer) {
         esp_err_t ret = gptimer_disable(timer);
-        if (ret != ESP_OK) {
+        if(ret != ESP_OK) {
             ESP_LOGE(TAG, "gptimer_disable failed: %s", esp_err_to_name(ret));
-            return ret; 
+            return ret;
         }
         ret = gptimer_del_timer(timer);
-        if (ret != ESP_OK) {
+        if(ret != ESP_OK) {
             ESP_LOGE(TAG, "gptimer_del_timer failed: %s", esp_err_to_name(ret));
             return ret;
         }
