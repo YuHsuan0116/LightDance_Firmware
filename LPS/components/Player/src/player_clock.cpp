@@ -2,6 +2,7 @@
 
 #include "esp_check.h"
 #include "esp_err.h"
+#include "esp_timer.h"
 
 static const char* TAG = "PlayerClock";
 

@@ -1,10 +1,11 @@
 #pragma once
 
 #include "driver/gptimer.h"
-#include "esp_timer.h"
+#include "esp_err.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
 #include "freertos/task.h"
+
+#include <stdint.h>
 
 #include "player_protocal.h"
 

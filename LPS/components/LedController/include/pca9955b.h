@@ -1,11 +1,11 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
+#include "driver/gpio.h"
 #include "driver/i2c_master.h"
-
-#include "ld_board.h"
-#include "ld_config.h"
+#include "esp_err.h"
 #include "ld_led_types.h"
 
 #ifdef __cplusplus

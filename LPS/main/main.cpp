@@ -5,6 +5,9 @@
 #include "bt_receiver.h"
 #include "esp_err.h"
 #include "nvs_flash.h"
+#include "ld_board.h"
+#include "ld_config.h"
+#include "ld_gamma_lut.h"
 
 #include "player.hpp"
 #include "readframe.h"

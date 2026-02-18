@@ -1,8 +1,11 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "driver/gpio.h"
 #include "driver/rmt_encoder.h"
 #include "driver/rmt_tx.h"
+#include "esp_err.h"
 
 #include "ld_board.h"
 #include "ld_config.h"

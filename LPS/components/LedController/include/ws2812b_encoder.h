@@ -1,6 +1,7 @@
 #pragma once
 
 #include "driver/rmt_encoder.h"
+#include "esp_err.h"
 
 /**
  * @brief Create a composite RMT encoder for WS2812B pixel driving.
