@@ -1,6 +1,5 @@
 #include "control_reader.h"
 
-#include <stdlib.h>
 #include <string.h>
 #include "esp_log.h"
 #include "ff.h"

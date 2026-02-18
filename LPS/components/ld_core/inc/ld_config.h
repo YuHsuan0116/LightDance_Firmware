@@ -9,8 +9,8 @@
  */
 
 /* Feature toggles */
-#define LD_CFG_ENABLE_SD 1
-#define LD_CFG_ENABLE_BT 1
+#define LD_CFG_ENABLE_SD 0
+#define LD_CFG_ENABLE_BT 0
 #define LD_CFG_ENABLE_LOGGER 0
 
 /* Per-channel max brightness for PCA9955B path (0..255). */

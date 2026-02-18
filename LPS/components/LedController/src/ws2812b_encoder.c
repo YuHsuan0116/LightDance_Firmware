@@ -1,5 +1,7 @@
 #include "ws2812b_encoder.h"
 
+#include <stdlib.h>
+
 #include "esp_attr.h"
 #include "ld_board.h"
 

@@ -3,9 +3,8 @@
  */
 
 #include "bt_receiver.h"
-#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include "driver/gpio.h"
 #include "esp_bt.h"
 #include "esp_log.h"
 #include "esp_rom_sys.h"
@@ -14,8 +13,6 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 
-#include "esp_system.h"
-#include "esp_vfs_fat.h"
 #include "player.hpp"
 
 // --- HCI Command Definitions ---

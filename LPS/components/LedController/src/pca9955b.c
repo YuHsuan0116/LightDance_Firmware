@@ -1,9 +1,11 @@
 #include "pca9955b.h"
 
-#include "string.h"
+#include <string.h>
 
 #include "esp_check.h"
 #include "esp_log.h"
+#include "ld_board.h"
+#include "ld_config.h"
 
 #define PCA9955B_PWM0_ADDR 0x08  // Address of PWM0 register
 #define PCA9955B_AUTO_INC 0x80   // Auto-Increment for all registers

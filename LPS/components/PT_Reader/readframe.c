@@ -1,13 +1,12 @@
 #include "readframe.h"
 #include "frame_reader.h"
-#include "player_protocal.h"
 
+#include <stdlib.h>
 #include <string.h>
-#include "esp_err.h"
 #include "esp_log.h"
+#include "ff.h"
 
 #include "control_reader.h"
-#include "ld_frame.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"

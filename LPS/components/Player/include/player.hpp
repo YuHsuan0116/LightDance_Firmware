@@ -1,15 +1,14 @@
 #pragma once
 
-#include "esp_timer.h"
+#include "esp_err.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
 #include "freertos/task.h"
 
 #include "LedController.hpp"
 #include "framebuffer.hpp"
 #include "player_clock.h"
 #include "player_protocal.h"
-
-#include "readframe.h"
 
 #define SHOW_TRANSITION 0
 

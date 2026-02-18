@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdint.h>
+#include <stdbool.h>
 #include "esp_err.h"
 
 #include "ld_frame.h"
