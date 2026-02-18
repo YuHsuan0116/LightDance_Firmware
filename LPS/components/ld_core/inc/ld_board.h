@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <stdint.h>
 
@@ -31,12 +31,31 @@ extern "C" {
 #define LD_BOARD_RMT_MEM_BLOCK_SYMBOLS 64
 #define LD_BOARD_RMT_TRANS_QUEUE_DEPTH 8
 
+/** WS2812B waveform timings in microseconds. */
+#define LD_BOARD_WS2812B_T0H_US 0.4f
+#define LD_BOARD_WS2812B_T0L_US 0.85f
+#define LD_BOARD_WS2812B_T1H_US 0.8f
+#define LD_BOARD_WS2812B_T1L_US 0.45f
+/** WS2812B reset low duration in microseconds. */
+#define LD_BOARD_WS2812B_RESET_US 50
+
 /** Number of PCA9955B chips on the I2C bus. */
 #define LD_BOARD_PCA9955B_NUM 8
 /** RGB outputs per PCA9955B chip. */
 #define LD_BOARD_PCA9955B_RGB_PER_IC 5
 /** Total PCA9955B RGB channels. */
 #define LD_BOARD_PCA9955B_CH_NUM (LD_BOARD_PCA9955B_RGB_PER_IC * LD_BOARD_PCA9955B_NUM)
+
+/** PCA9955B color payload shape. */
+#define LD_BOARD_PCA9955B_COLOR_BYTES_PER_PIXEL 3
+#define LD_BOARD_PCA9955B_BUFFER_DATA_LEN (LD_BOARD_PCA9955B_RGB_PER_IC * LD_BOARD_PCA9955B_COLOR_BYTES_PER_PIXEL)
+
+/**
+ * Show batching split points.
+ * First batch handles [0..FIRST_BATCH_SIZE), second batch handles [FIRST_BATCH_SIZE..N).
+ */
+#define LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE (LD_BOARD_WS2812B_NUM / 2)
+#define LD_BOARD_LED_SHOW_PCA_FIRST_BATCH_SIZE (LD_BOARD_PCA9955B_NUM / 2)
 
 /**
  * @brief Immutable hardware mapping for the current board.

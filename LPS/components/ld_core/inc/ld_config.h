@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 /**
  * @file ld_config.h
@@ -27,6 +27,20 @@
 
 /* RMT configuration */
 #define LD_CFG_RMT_TIMEOUT_MS 10
+
+/* Player runtime/task tuning */
+#define LD_CFG_PLAYER_TASK_NAME "PlayerTask"
+#define LD_CFG_PLAYER_TASK_STACK_SIZE 8192
+#define LD_CFG_PLAYER_TASK_PRIORITY 5
+#define LD_CFG_PLAYER_TASK_CORE_ID 1
+#define LD_CFG_PLAYER_EVENT_QUEUE_LEN 50
+#define LD_CFG_PLAYER_FPS 40
+#define LD_CFG_PLAYER_BOOT_RELOAD_DELAY_MS 100
+#define LD_CFG_PLAYER_RETRY_DELAY_MS 1000
+#define LD_CFG_PLAYER_TEST_BREATH_CYCLE_MS 6000
+#define LD_CFG_PLAYER_TEST_FRAME_INTERVAL_MS 2000
+#define LD_CFG_PLAYER_DEBUG_DUMP_PIXELS 5
+#define LD_CFG_PLAYER_GPTIMER_RESOLUTION_HZ 1000000
 
 /* Behavior controls */
 #define LD_CFG_IGNORE_DRIVER_INIT_FAIL 1

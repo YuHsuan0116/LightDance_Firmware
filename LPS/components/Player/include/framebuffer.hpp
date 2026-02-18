@@ -2,9 +2,9 @@
 
 #include "esp_err.h"
 
+#include "ld_board.h"
 #include "ld_config.h"
 #include "ld_frame.h"
-#include "ld_board.h"
 #include "ld_led_ops.h"
 #include "ld_led_types.h"
 

@@ -4,10 +4,10 @@
 
 #include "bt_receiver.h"
 #include "esp_err.h"
-#include "nvs_flash.h"
 #include "ld_board.h"
 #include "ld_config.h"
 #include "ld_gamma_lut.h"
+#include "nvs_flash.h"
 
 #include "player.hpp"
 #include "readframe.h"
@@ -67,13 +67,13 @@ static void app_task(void* arg) {
 #if LD_CFG_ENABLE_SD
     player_id = get_sd_card_id();
 #else
-    player_id = 1; //for test
+    player_id = 1;  // for test
 #endif
-    if (player_id > 0) {
+    if(player_id > 0) {
         bt_receiver_config_t rx_cfg = {
             .feedback_gpio_num = -1,
             .manufacturer_id = 0xFFFF,
-            .my_player_id = player_id, 
+            .my_player_id = player_id,
             .sync_window_us = 500000,
             .queue_size = 20,
         };

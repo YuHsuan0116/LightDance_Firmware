@@ -1,4 +1,4 @@
-#include "LedController.hpp"
+﻿#include "LedController.hpp"
 
 #include "string.h"
 
@@ -146,8 +146,8 @@ esp_err_t LedController::show() {
 #endif
 
     // 1. Trigger WS2812B transmission (Asynchronous/Non-blocking)
-    ESP_LOGD(TAG, "show() phase 1: trigger WS2812B [0..%d)", LD_BOARD_WS2812B_NUM / 2);
-    for(int i = 0; i < LD_BOARD_WS2812B_NUM / 2; i++) {
+    ESP_LOGD(TAG, "show() phase 1: trigger WS2812B [0..%d)", LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE);
+    for(int i = 0; i < LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE; i++) {
         err = ws2812b_show(&ws2812b_devs[i]);
         if(err != ESP_OK) {
             // Log error but continue to try updating other LEDs
@@ -157,8 +157,8 @@ esp_err_t LedController::show() {
     }
 
     // 3. Wait for WS2812B transmission to complete
-    ESP_LOGD(TAG, "show() phase 2: wait WS2812B [0..%d)", LD_BOARD_WS2812B_NUM / 2);
-    for(int i = 0; i < LD_BOARD_WS2812B_NUM / 2; i++) {
+    ESP_LOGD(TAG, "show() phase 2: wait WS2812B [0..%d)", LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE);
+    for(int i = 0; i < LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE; i++) {
         err = ws2812b_wait_done(&ws2812b_devs[i]);
         if(err != ESP_OK) {
             ESP_LOGE(TAG, "Wait done failed for WS2812B[%d]: %s", i, esp_err_to_name(err));
@@ -167,8 +167,8 @@ esp_err_t LedController::show() {
     }
 
     // 2. Trigger PCA9955B transmission (Synchronous/Blocking)
-    ESP_LOGD(TAG, "show() phase 3: flush PCA9955B [0..%d)", LD_BOARD_PCA9955B_NUM / 2);
-    for(int i = 0; i < LD_BOARD_PCA9955B_NUM / 2; i++) {
+    ESP_LOGD(TAG, "show() phase 3: flush PCA9955B [0..%d)", LD_BOARD_LED_SHOW_PCA_FIRST_BATCH_SIZE);
+    for(int i = 0; i < LD_BOARD_LED_SHOW_PCA_FIRST_BATCH_SIZE; i++) {
         if(!pca_enable[i]) {
             ESP_LOGD(TAG, "Skip PCA9955B[%d] (disabled)", i);
             continue;
@@ -181,8 +181,8 @@ esp_err_t LedController::show() {
     }
 
     // 1. Trigger WS2812B transmission (Asynchronous/Non-blocking)
-    ESP_LOGD(TAG, "show() phase 4: trigger WS2812B [%d..%d)", LD_BOARD_WS2812B_NUM / 2, LD_BOARD_WS2812B_NUM);
-    for(int i = LD_BOARD_WS2812B_NUM / 2; i < LD_BOARD_WS2812B_NUM; i++) {
+    ESP_LOGD(TAG, "show() phase 4: trigger WS2812B [%d..%d)", LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE, LD_BOARD_WS2812B_NUM);
+    for(int i = LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE; i < LD_BOARD_WS2812B_NUM; i++) {
         err = ws2812b_show(&ws2812b_devs[i]);
         if(err != ESP_OK) {
             // Log error but continue to try updating other LEDs
@@ -192,8 +192,8 @@ esp_err_t LedController::show() {
     }
 
     // 3. Wait for WS2812B transmission to complete
-    ESP_LOGD(TAG, "show() phase 5: wait WS2812B [%d..%d)", LD_BOARD_WS2812B_NUM / 2, LD_BOARD_WS2812B_NUM);
-    for(int i = LD_BOARD_WS2812B_NUM / 2; i < LD_BOARD_WS2812B_NUM; i++) {
+    ESP_LOGD(TAG, "show() phase 5: wait WS2812B [%d..%d)", LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE, LD_BOARD_WS2812B_NUM);
+    for(int i = LD_BOARD_LED_SHOW_WS_FIRST_BATCH_SIZE; i < LD_BOARD_WS2812B_NUM; i++) {
         err = ws2812b_wait_done(&ws2812b_devs[i]);
         if(err != ESP_OK) {
             ESP_LOGE(TAG, "Wait done failed for WS2812B[%d]: %s", i, esp_err_to_name(err));
@@ -202,8 +202,8 @@ esp_err_t LedController::show() {
     }
 
     // 2. Trigger PCA9955B transmission (Synchronous/Blocking)
-    ESP_LOGD(TAG, "show() phase 6: flush PCA9955B [%d..%d)", LD_BOARD_PCA9955B_NUM / 2, LD_BOARD_PCA9955B_NUM);
-    for(int i = LD_BOARD_PCA9955B_NUM / 2; i < LD_BOARD_PCA9955B_NUM; i++) {
+    ESP_LOGD(TAG, "show() phase 6: flush PCA9955B [%d..%d)", LD_BOARD_LED_SHOW_PCA_FIRST_BATCH_SIZE, LD_BOARD_PCA9955B_NUM);
+    for(int i = LD_BOARD_LED_SHOW_PCA_FIRST_BATCH_SIZE; i < LD_BOARD_PCA9955B_NUM; i++) {
         if(!pca_enable[i]) {
             ESP_LOGD(TAG, "Skip PCA9955B[%d] (disabled)", i);
             continue;

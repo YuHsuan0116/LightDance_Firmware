@@ -1,4 +1,4 @@
-#include "framebuffer.hpp"
+﻿#include "framebuffer.hpp"
 
 #include <string.h>
 #include "algorithm"
@@ -98,7 +98,12 @@ void FrameBuffer::set_test_color(grb8_t color) {
 }
 
 grb8_t FrameBuffer::make_breath_color(uint64_t time_ms) const {
-    uint16_t h_cal = ((uint64_t)time_ms * 1535 + 5999 / 2) / 5999;
+    const uint32_t cycle_ms = (LD_CFG_PLAYER_TEST_BREATH_CYCLE_MS > 0) ? LD_CFG_PLAYER_TEST_BREATH_CYCLE_MS : 1;
+    const uint64_t phase_ms = time_ms % cycle_ms;
+    uint16_t h_cal = (uint16_t)((phase_ms * 1536ULL) / cycle_ms);
+    if(h_cal > 1535) {
+        h_cal = 1535;
+    }
     return hsv_to_grb_u8(hsv8(h_cal, 255, 255));
 }
 
@@ -239,7 +244,7 @@ void print_frame_data(const frame_data& data) {
         if(len > LD_BOARD_WS2812B_MAX_PIXEL_NUM)
             len = LD_BOARD_WS2812B_MAX_PIXEL_NUM;
 
-        int dump = (len > 5) ? 5 : len;
+        int dump = (len > LD_CFG_PLAYER_DEBUG_DUMP_PIXELS) ? LD_CFG_PLAYER_DEBUG_DUMP_PIXELS : len;
 
         ESP_LOGI(TAG, "  CH %d (len=%d):", ch, len);
         for(int i = 0; i < dump; i++) {
@@ -270,7 +275,7 @@ static grb8_t blue = {.g = 0, .r = 0, .b = brightness};
 static grb8_t color_pool[3] = {red, green, blue};
 
 void test_read_frame(table_frame_t* p) {
-    p->timestamp = count * 2000;
+    p->timestamp = (uint64_t)count * LD_CFG_PLAYER_TEST_FRAME_INTERVAL_MS;
     p->fade = true;
     for(int ch_idx = 0; ch_idx < LD_BOARD_WS2812B_NUM; ch_idx++) {
         for(int i = 0; i < ch_info.rmt_strips[ch_idx]; i++) {
