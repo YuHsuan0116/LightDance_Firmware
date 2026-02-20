@@ -244,6 +244,8 @@ static void update_task_func(void *pvParameters) {
                 if (download_file(sock, "0:/control.dat") == ESP_OK) {
                     download_file(sock, "0:/frame.dat");
                 }
+                const char* ack_msg = "DONE\n";
+                send(sock, ack_msg, strlen(ack_msg), 0);
             }
             close(sock);
         }
@@ -253,6 +255,7 @@ static void update_task_func(void *pvParameters) {
 
     // [Step 5] Stop Wi-Fi
     ESP_LOGI(TAG, ">>> Step 6: Stop Wi-Fi");
+    ESP_LOGI(TAG, "Sent DONE to server.");
     wifi_stop_cleanup();
     vTaskDelay(pdMS_TO_TICKS(500));
 
