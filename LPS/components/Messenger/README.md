@@ -114,6 +114,21 @@ If you need to stop scanning and timers:
 bt_receiver_stop();
 ```
 
+### 3. De-initialization (Wi-Fi Coexistence)
+
+To completely release Bluetooth resources (e.g., before connecting to Wi-Fi to save memory or avoid hardware conflicts), use `deinit`. This function disables the controller and frees all allocated tasks and queues.
+
+```c
+// 1. Fully stop and release BLE resources
+bt_receiver_deinit();
+
+// ... Perform Wi-Fi operations (e.g., OTA update, File Download) ...
+
+// 2. Re-initialize when done with Wi-Fi
+bt_receiver_init(&config);
+bt_receiver_start();
+```
+
 ## 📡 Protocol Definition
 
 ### 1. Received Packet (From Sender)
