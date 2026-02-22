@@ -447,7 +447,7 @@ static void sync_process_task(void* arg) {
                         int64_t final_target = sum_target / count;
                         int64_t wait_us = final_target - now;
                         int8_t avg_rssi = (int8_t)(sum_rssi / count);
-                        if(wait_us > 500) {
+                        if(wait_us > 100000) {
                             action_slot_t* target_slot = &s_slots[current_cmd_id];
                             target_slot->ctx.target_cmd = current_cmd;
                             target_slot->ctx.target_mask = current_mask;
@@ -496,7 +496,7 @@ static void sync_process_task(void* arg) {
                      int64_t final_target = sum_target / count;
                      int64_t wait_us = final_target - now;
                      int8_t avg_rssi = (int8_t)(sum_rssi / count);
-                     if(wait_us > 500) {
+                     if(wait_us > 100000) {
                          action_slot_t* target_slot = &s_slots[current_cmd_id];
                          if(target_slot != NULL) {
                              target_slot->ctx.target_cmd = current_cmd;
