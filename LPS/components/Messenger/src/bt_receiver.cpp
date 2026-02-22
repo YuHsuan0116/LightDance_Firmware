@@ -450,7 +450,7 @@ static void sync_process_task(void* arg) {
                         int64_t final_target = sum_target / count;
                         int64_t wait_us = final_target - now;
                         int8_t avg_rssi = (int8_t)(sum_rssi / count);
-                        if(wait_us > 500) {
+                        if(wait_us > 100000) {
                             action_slot_t* target_slot = &s_slots[current_cmd_id];
                             target_slot->ctx.target_cmd = current_cmd;
                             target_slot->ctx.target_mask = current_mask;
@@ -499,7 +499,7 @@ static void sync_process_task(void* arg) {
                      int64_t final_target = sum_target / count;
                      int64_t wait_us = final_target - now;
                      int8_t avg_rssi = (int8_t)(sum_rssi / count);
-                     if(wait_us > 500) {
+                     if(wait_us > 100000) {
                          action_slot_t* target_slot = &s_slots[current_cmd_id];
                          if(target_slot != NULL) {
                              target_slot->ctx.target_cmd = current_cmd;
@@ -593,27 +593,27 @@ esp_err_t bt_receiver_stop(void) {
 }
 
 esp_err_t bt_receiver_deinit(void) {
-    // 1. åœæ­¢é‚è¼¯
+    // 1. ???æ­¢é??è¼?
     if (s_is_running) {
         bt_receiver_stop();
     }
 
-    // 2. è¨»éŠ· Callbackï¼Œåœæ­¢æ¥æ”¶æ–°å°åŒ…
+    // 2. è¨»é?? Callbackï¼????æ­¢æ?¥æ?¶æ?°å?????
     esp_vhci_host_register_callback(NULL);
 
-    // 3. å…ˆåˆªé™¤ Taskï¼Œç¢ºä¿æ²’æœ‰äººæœƒå†å»è®€å– Queue
+    // 3. ?????ªé?? Taskï¼?ç¢ºä??æ²????äººæ???????»è????? Queue
     if (s_task_handle) {
         vTaskDelete(s_task_handle);
         s_task_handle = NULL;
     }
 
-    // 4. å†åˆªé™¤ Queue
+    // 4. ?????ªé?? Queue
     if (s_adv_queue) {
         vQueueDelete(s_adv_queue);
         s_adv_queue = NULL;
     }
     
-    // 5. é‡‹æ”¾å®šæ™‚å™¨è³‡æº
+    // 5. ?????¾å???????¨è??æº?
     for(int i = 0; i < MAX_CONCURRENT_ACTIONS; i++) {
         if(s_slots[i].timer_handle) {
             esp_timer_delete(s_slots[i].timer_handle);
@@ -621,11 +621,11 @@ esp_err_t bt_receiver_deinit(void) {
         }
     }
 
-    // 6. é—œé–‰ Controller
+    // 6. ?????? Controller
     esp_bt_controller_disable();
     esp_bt_controller_deinit();
     
-    // 7. é‡‹æ”¾è—ç‰™è¨˜æ†¶é«” (é—œéµæ­¥é©Ÿ)
+    // 7. ?????¾è?????è¨???¶é?? (?????µæ­¥é©?)
     // esp_bt_mem_release(ESP_BT_MODE_BTDM);
 
     ESP_LOGI(TAG, "Receiver De-initialized");
