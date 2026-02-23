@@ -16,6 +16,13 @@ enum class FbTestMode : uint8_t {
     BREATH,
 };
 
+enum class FbComputeStatus : uint8_t {
+    OK = 0,
+    HOLD,
+    EOF_REACHED,
+    ERROR,
+};
+
 class FrameBuffer {
   public:
     FrameBuffer();
@@ -25,7 +32,7 @@ class FrameBuffer {
     esp_err_t reset();
     esp_err_t deinit();
 
-    void compute(uint64_t time_ms);
+    FbComputeStatus compute(uint64_t time_ms);
 
     void set_test_mode(FbTestMode mode);
     FbTestMode get_test_mode() const;
@@ -39,7 +46,7 @@ class FrameBuffer {
     frame_data* get_buffer();
 
   private:
-    bool handle_frames(uint64_t time_ms);
+    FbComputeStatus handle_frames(uint64_t time_ms);
     void lerp(uint8_t p);
     void gamma_correction();
     void brightness_correction();
@@ -53,6 +60,7 @@ class FrameBuffer {
 
     FbTestMode test_mode_ = FbTestMode::OFF;
     grb8_t test_color_ = {0, 0, 0};
+    bool eof_reported_ = false;
 
     grb8_t make_breath_color(uint64_t time_ms) const;
 };

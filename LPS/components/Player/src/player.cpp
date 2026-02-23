@@ -108,7 +108,11 @@ esp_err_t Player::resetPlayback() {
 esp_err_t Player::updatePlayback() {
     const uint64_t time_ms = clock.now_us() / 1000;
 
-    fb.compute(time_ms);
+    FbComputeStatus fb_status = fb.compute(time_ms);
+    if(fb_status == FbComputeStatus::ERROR) {
+        ESP_LOGE(TAG, "framebuffer compute failed");
+        return ESP_FAIL;
+    }
 
     frame_data* buf = fb.get_buffer();
     controller.write_frame(buf);
@@ -116,6 +120,13 @@ esp_err_t Player::updatePlayback() {
     // print_frame_data(*buf);
 
     controller.show();
+
+    if(fb_status == FbComputeStatus::EOF_REACHED) {
+        Event e{};
+        e.type = EVENT_STOP;
+        ESP_RETURN_ON_ERROR(sendEvent(e), TAG, "failed to enqueue stop event on EOF");
+    }
+
     return ESP_OK;
 }
 

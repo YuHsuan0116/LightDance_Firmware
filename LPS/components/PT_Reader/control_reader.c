@@ -60,23 +60,23 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
     /* ===== version check ===== */
     uint8_t version_bytes[2];
     fr = f_read(&fp, version_bytes, 2, &br);
-    
+
     if(fr != FR_OK || br != 2) {
         ESP_LOGE(TAG, "Failed to read version header");
         f_close(&fp);
         return ESP_FAIL;
     }
-    
+
     uint8_t major = version_bytes[0];
     uint8_t minor = version_bytes[1];
 
     checksum_add_u8(&checksum_calc, major);
     checksum_add_u8(&checksum_calc, minor);
-    
+
     if(major != EXPECTED_VERSION_MAJOR || minor != EXPECTED_VERSION_MINOR) {
         goto version_fail;
     }
-    
+
     ESP_LOGI(TAG, "control.dat version: %d.%d (OK)", major, minor);
 
     /* ===== PCA9955B enable flags ===== */
@@ -123,7 +123,7 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
         if(f_read(&fp, &timestamp, 4, &br) != FR_OK || br != 4) {
             goto io_fail;
         }
-    ESP_LOGI(TAG, "test %d", i);
+        ESP_LOGI(TAG, "test %d", i);
         checksum_add_u32(&checksum_calc, timestamp);
     }
 
@@ -139,12 +139,10 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
 
     /* ===== verify checksum ===== */
     if(checksum_read != checksum_calc) {
-        ESP_LOGE(TAG, "checksum mismatch! read=%lu calculated=%lu", 
-                 (unsigned long)checksum_read, (unsigned long)checksum_calc);
+        ESP_LOGE(TAG, "checksum mismatch! read=%lu calculated=%lu", (unsigned long)checksum_read, (unsigned long)checksum_calc);
         memset(out, 0, sizeof(*out));
         return ESP_ERR_INVALID_CRC;
     }
-
 
     /* ---------------- error paths ---------------- */
 
@@ -161,8 +159,7 @@ fmt_fail:
     return ESP_ERR_INVALID_RESPONSE;
 
 version_fail:
-    ESP_LOGE(TAG, "Version mismatch! Expected %d.%d, got %d.%d", 
-                 EXPECTED_VERSION_MAJOR, EXPECTED_VERSION_MINOR, major, minor);
+    ESP_LOGE(TAG, "Version mismatch! Expected %d.%d, got %d.%d", EXPECTED_VERSION_MAJOR, EXPECTED_VERSION_MINOR, major, minor);
     f_close(&fp);
     memset(out, 0, sizeof(*out));
     return ESP_FAIL;
