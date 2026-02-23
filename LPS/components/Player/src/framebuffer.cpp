@@ -30,6 +30,7 @@ FrameBuffer::~FrameBuffer() {}
 
 esp_err_t FrameBuffer::init() {
     test_mode_ = FbTestMode::OFF;
+    eof_reported_ = false;
 
     current = &frame0;
     next = &frame1;
@@ -56,6 +57,7 @@ esp_err_t FrameBuffer::init() {
 
 esp_err_t FrameBuffer::reset() {
     test_mode_ = FbTestMode::OFF;
+    eof_reported_ = false;
 
     current = &frame0;
     next = &frame1;
@@ -111,7 +113,7 @@ grb8_t FrameBuffer::get_test_color() const {
     return test_color_;
 }
 
-void FrameBuffer::compute(uint64_t time_ms) {
+FbComputeStatus FrameBuffer::compute(uint64_t time_ms) {
 
     // ---- Test path ----
     if(test_mode_ != FbTestMode::OFF) {
@@ -123,22 +125,25 @@ void FrameBuffer::compute(uint64_t time_ms) {
         gamma_correction();
         brightness_correction();
 
-        return;
+        return FbComputeStatus::OK;
     }
 
     // ---- Normal path ----
-    if(!handle_frames(time_ms)) {
-        return;
+    FbComputeStatus status = handle_frames(time_ms);
+    if(status == FbComputeStatus::ERROR) {
+        return status;
     }
 
-    uint8_t p = (current->fade) ? calc_lerp_p(time_ms, current->timestamp, next->timestamp) : 0;
+    if(status == FbComputeStatus::OK) {
+        uint8_t p = (current->fade) ? calc_lerp_p(time_ms, current->timestamp, next->timestamp) : 0;
 
-    lerp(p);
+        lerp(p);
+    }
 
     gamma_correction();
     brightness_correction();
 
-    return;
+    return status;
 }
 
 void FrameBuffer::fill(grb8_t color) {
@@ -155,22 +160,36 @@ void FrameBuffer::fill(grb8_t color) {
     return;
 }
 
-bool FrameBuffer::handle_frames(uint64_t time_ms) {
+FbComputeStatus FrameBuffer::handle_frames(uint64_t time_ms) {
     if(current == nullptr || next == nullptr) {
         ESP_LOGE(TAG, "FrameBuffer not initialized");
-        return false;
+        return FbComputeStatus::ERROR;
     }
 
     if(time_ms < current->timestamp) {
         buffer = current->data;
-        return false;
+        return FbComputeStatus::HOLD;
     }
 
     while(time_ms >= next->timestamp) {
         std::swap(current, next);
 
 #if LD_CFG_ENABLE_SD
-        read_frame(next);
+        esp_err_t err = read_frame(next);
+        if(err == ESP_ERR_NOT_FOUND) {
+            buffer = current->data;
+            if(!eof_reported_) {
+                eof_reported_ = true;
+                ESP_LOGI(TAG, "end");
+                return FbComputeStatus::EOF_REACHED;
+            }
+            return FbComputeStatus::HOLD;
+        }
+        if(err != ESP_OK) {
+            ESP_LOGE(TAG, "read_frame failed: %s", esp_err_to_name(err));
+            buffer = current->data;
+            return FbComputeStatus::ERROR;
+        }
         // print_table_frame(*next);
 #else
         test_read_frame(next);
@@ -179,11 +198,11 @@ bool FrameBuffer::handle_frames(uint64_t time_ms) {
         if(next->timestamp <= current->timestamp) {
             ESP_LOGE(TAG, "Non-monotonic timestamp: current=%" PRIu64 ", next=%" PRIu64, current->timestamp, next->timestamp);
             buffer = current->data;
-            return false;
+            return FbComputeStatus::ERROR;
         }
     }
 
-    return true;
+    return FbComputeStatus::OK;
 }
 
 void FrameBuffer::lerp(uint8_t p) {
