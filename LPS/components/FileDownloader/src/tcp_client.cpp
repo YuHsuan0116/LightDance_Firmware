@@ -171,6 +171,19 @@ static esp_err_t download_file(int sock, const char* filename) {
         sd_writer_close();
         return ESP_FAIL;
     }
+
+#if LD_CFG_ENABLE_SD
+    // 2. Initialize SD writer (only execute when SD card is enabled)
+    if (sd_writer_init(filename) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to init sd_writer for %s", filename);
+        free(buf);
+        return ESP_FAIL;
+    }
+#else
+    ESP_LOGW(TAG, "SD Card disabled. Mocking write process for %s", filename);
+#endif
+
+    // 3. Receive file data in chunks
     size_t remaining = file_size;
     
     while (remaining > 0) {
@@ -182,11 +195,17 @@ static esp_err_t download_file(int sock, const char* filename) {
             return ESP_FAIL;
         }
 
+#if LD_CFG_ENABLE_SD
+        // Perform real SD card write
         if (sd_writer_write(buf, n) != ESP_OK) {
             ESP_LOGE(TAG, "SD Write failed");
             sd_writer_close();
             return ESP_FAIL;
         }
+#else
+        // Mock write delay (optional, slightly slow down reception to prevent buffer overload)
+        // vTaskDelay(pdMS_TO_TICKS(5)); 
+#endif
         remaining -= n;
     }
 
@@ -235,6 +254,10 @@ static void update_task_func(void *pvParameters) {
 
                 // [Step 3] Message Player ID
                 int pid = get_sd_card_id();
+                if (pid <= 0) pid = 1; // Fallback protection
+#else
+                int pid = 1; // Force ID as 1 during test without SD card
+#endif
                 char msg[32];
                 snprintf(msg, sizeof(msg), "%d\n", pid);
                 send(sock, msg, strlen(msg), 0);
