@@ -165,7 +165,7 @@ static esp_err_t download_file(int sock, const char* filename) {
     }
 
 #if LD_CFG_ENABLE_SD
-    // 2. Initialize SD writer (只有在啟用 SD 卡時才執行)
+    // 2. Initialize SD writer (only execute when SD card is enabled)
     if (sd_writer_init(filename) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to init sd_writer for %s", filename);
         free(buf);
@@ -190,7 +190,7 @@ static esp_err_t download_file(int sock, const char* filename) {
         }
 
 #if LD_CFG_ENABLE_SD
-        // 真實寫入 SD 卡
+        // Perform real SD card write
         if (sd_writer_write(buf, n) != ESP_OK) {
             ESP_LOGE(TAG, "SD Write failed");
             sd_writer_close();
@@ -198,7 +198,7 @@ static esp_err_t download_file(int sock, const char* filename) {
             return ESP_FAIL;
         }
 #else
-        // 模擬寫入延遲 (可選，稍微減緩接收速度避免塞爆)
+        // Mock write delay (optional, slightly slow down reception to prevent buffer overload)
         // vTaskDelay(pdMS_TO_TICKS(5)); 
 #endif
         remaining -= n;
@@ -252,9 +252,9 @@ static void update_task_func(void *pvParameters) {
                 // [Step 3] Message Player ID
 #if LD_CFG_ENABLE_SD
                 int pid = get_sd_card_id();
-                if (pid <= 0) pid = 1; // 防呆
+                if (pid <= 0) pid = 1; // Fallback protection
 #else
-                int pid = 1; // 無 SD 卡測試時，強制將自己視為 Player 1
+                int pid = 1; // Force ID as 1 during test without SD card
 #endif
                 char msg[32];
                 snprintf(msg, sizeof(msg), "%d\n", pid);
