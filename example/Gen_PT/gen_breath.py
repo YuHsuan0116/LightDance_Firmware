@@ -1,97 +1,77 @@
 import struct
+import argparse
 
-OF_channel = [
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  # OF 0-9
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 1,  # OF 10-19
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # OF 20-29
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0   # OF 30-39
-]
-Strip_channel = [10, 0, 0, 0, 0, 0, 0, 0]  # Strip 0-7的LED數量
+# 硬體設定
+OF_channel = [1]*40
+Strip_channel = [100]*8
+version_major = 1
+version_minor = 2
 
-VERSION_MAJOR = 1
-VERSION_MINOR = 1
 COLOR_MAP = {
-    'g': (255, 0, 0),
-    'r': (0, 255, 0),
-    'b': (0, 0, 255),
-    'rg': (255, 255, 0),
-    'gb': (255, 0, 255),
-    'rb': (0, 255, 255),
+    'g': (255, 0, 0), 'r': (0, 255, 0), 'b': (0, 0, 255),
+    'rg': (255, 255, 0), 'gb': (255, 0, 255), 'rb': (0, 255, 255),
     'w': (255, 255, 255)
 }
 
-def calculate_checksum(frame_data):
-    return sum(frame_data) & 0xFFFFFFFF
+def calculate_checksum(data):
+    return sum(data) & 0xFFFFFFFF
 
-print("Enter breathing light settings:")
-color_input = input("Color (g/r/b/rg/gb/rb/w): ").strip()
-fade = int(input("Fade (0=off, 1=on): ") or "1")
-time_interval = int(input("Time interval (ms): ") or "100")
-frame_num = int(input("Frame number: ") or "100")
-
-color = COLOR_MAP[color_input]
-OF_NUM = sum(OF_channel)
-STRIP_NUM = sum(1 for x in Strip_channel if x > 0)
-total_leds = sum(Strip_channel)
-
-# 生成 control.dat
-with open("control.dat", "wb") as control_file:
-    control_data = bytearray()
-
-    control_data.extend(struct.pack('<BB', VERSION_MAJOR, VERSION_MINOR))
+def main():
+    parser = argparse.ArgumentParser(description='Generate breathing light pattern files')
+    parser.add_argument('-c', '--color', required=True, choices=COLOR_MAP.keys())
+    parser.add_argument('-f', '--fade', type=int, choices=[0, 1], default=1)
+    parser.add_argument('-i', '--interval', type=int, required=True)
+    parser.add_argument('-t', '--total_time', type=int, required=True)
     
-    for of_enabled in OF_channel:
-        control_data.extend(struct.pack('<B', of_enabled))
+    args = parser.parse_args()
     
-    for strip_leds in Strip_channel:
-        control_data.extend(struct.pack('<B', strip_leds))
+    color = COLOR_MAP[args.color]
+    frame_num = (args.total_time + args.interval - 1) // args.interval
     
-    control_data.extend(struct.pack('<I', frame_num))
-    
-    for k in range(frame_num):
-        timestamp = k * time_interval
-        control_data.extend(struct.pack('<I', timestamp))
-    
-    #checksum = calculate_checksum(control_data)
-    
-    control_file.write(control_data)
-    #control_file.write(struct.pack('<I', checksum))
-
-# 生成 frame.dat
-with open("frame.dat", "wb") as frame_file:
-    frame_file.write(struct.pack('<BB', VERSION_MAJOR, VERSION_MINOR))
-    
-    for k in range(frame_num):
-        frame_data = bytearray()
-        start_time = k * time_interval
-        frame_data.extend(struct.pack('<I', start_time))
-        frame_data.append(fade)
+    # control.dat
+    with open("control.dat", "wb") as f:
+        data = bytearray()
+        data.extend(struct.pack('<BB', version_major, version_minor))
+        data.extend(struct.pack('B'*40, *OF_channel))
+        data.extend(struct.pack('B'*8, *Strip_channel))
+        data.extend(struct.pack('<I', frame_num))
         
-        for i, enabled in enumerate(OF_channel):
-            if enabled:
+        for i in range(frame_num):
+            data.extend(struct.pack('<I', i * args.interval))
+        
+        checksum = calculate_checksum(data)
+        f.write(data)
+        f.write(struct.pack('<I', checksum))
+    
+    # frame.dat
+    with open("frame.dat", "wb") as f:
+        f.write(struct.pack('<BB', version_major, version_minor))
+        
+        for k in range(frame_num):
+            frame = bytearray()
+            frame.extend(struct.pack('<I', k * args.interval))
+            frame.append(args.fade)
+            
+            # OF: 偶數幀亮色
+            of_count = sum(OF_channel)
+            for i in range(of_count):
                 if k % 2 == 0:
-                    frame_data.append(color[0])  # G
-                    frame_data.append(color[1])  # R
-                    frame_data.append(color[2])  # B
+                    frame.extend(color)
                 else:
-                    frame_data.append(0)  # G
-                    frame_data.append(0)  # R
-                    frame_data.append(0)  # B
-        
-        for i, strip_leds in enumerate(Strip_channel):
-            if strip_leds > 0:
-                for j in range(strip_leds):
-                    if k % 2 == 1:
-                        frame_data.append(color[0])  # G
-                        frame_data.append(color[1])  # R
-                        frame_data.append(color[2])  # B
-                    else:
-                        frame_data.append(0)  # G
-                        frame_data.append(0)  # R
-                        frame_data.append(0)  # B
-        
-        checksum = calculate_checksum(frame_data)
-        frame_file.write(frame_data)
-        frame_file.write(struct.pack('<I', checksum))
+                    frame.extend((0,0,0))
+            
+            # Strip: 奇數幀亮色
+            strip_count = sum(Strip_channel)
+            for i in range(strip_count):
+                if k % 2 == 1:
+                    frame.extend(color)
+                else:
+                    frame.extend((0,0,0))
+            
+            f.write(frame)
+            f.write(struct.pack('<I', calculate_checksum(frame)))
+    
+    print(f"Generated {frame_num} frames")
 
-print("Files generated.")
+if __name__ == "__main__":
+    main()
