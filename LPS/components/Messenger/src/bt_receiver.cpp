@@ -687,7 +687,7 @@ esp_err_t bt_receiver_deinit(void) {
     esp_bt_controller_deinit();
     
     // 7. (Optional) Release BT memory if needed
-    // esp_bt_mem_release(ESP_BT_MODE_BTDM);
+    esp_bt_mem_release(ESP_BT_MODE_BTDM);
 
     ESP_LOGI(TAG, "Receiver De-initialized");
     return ESP_OK;

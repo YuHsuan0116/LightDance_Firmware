@@ -38,10 +38,13 @@ static void sys_cmd_task(void* arg) {
                 case 0x09:
                     ESP_LOGD("SYS_TASK", ">>> [RESET] Command Received! Rebooting in 1s...");
                     vTaskDelay(pdMS_TO_TICKS(1000));
-                    // esp_restart();
+                    esp_restart();
                     break;
                 case 1:
                     Player::getInstance().stop();
+                    ESP_LOGD("SYS_TASK", ">>> [RESET] Download Completed! Rebooting in 1s...");
+                    vTaskDelay(pdMS_TO_TICKS(1000));
+                    esp_restart();
                     break;
                 default:
                     break;
