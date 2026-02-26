@@ -7,9 +7,9 @@ extern "C" {
 #endif
 
 // Wi-Fi & TCP Server Config
-#define TCP_WIFI_SSID      "Galaxy A317C78"
-#define TCP_WIFI_PASS      "y5cwamye1"
-#define TCP_SERVER_IP      "10.176.188.135" // server IP
+#define TCP_WIFI_SSID      "makerspace-2.4G"
+#define TCP_WIFI_PASS      "ntueemakerspace"
+#define TCP_SERVER_IP      "192.168.0.14" // server IP
 #define TCP_SERVER_PORT    3333            // server port
 
 /**

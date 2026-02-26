@@ -13,7 +13,7 @@
 #include "player.hpp"
 #include "readframe.h"
 #include "sd_logger.h"
-
+#include "tcp_client.h"
 #include "esp_system.h"
 
 
@@ -32,7 +32,7 @@ static void sys_cmd_task(void* arg) {
                     ESP_LOGD("SYS_TASK", ">>> [UPLOAD] Command Received!");
                     if(Player::getInstance().getState()!=1) Player::getInstance().stop();
                     Player::getInstance().test(0, 255, 0);
-                    // switch to wifi
+                    tcp_client_start_update_task();
                     break;
                     
                 case 0x09:
@@ -47,6 +47,7 @@ static void sys_cmd_task(void* arg) {
         }
     }
 }
+
 static void app_task(void* arg) {
     // (void)arg;
     ESP_LOGI(TAG, "app_task start, HWM=%u", uxTaskGetStackHighWaterMark(NULL));

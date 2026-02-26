@@ -31,7 +31,7 @@ static EventGroupHandle_t s_wifi_event_group;
 
 static int s_retry_num = 0;
 
-extern QueueHandle_t main_msg_queue;
+extern QueueHandle_t sys_cmd_queue;
 static esp_netif_t *s_wifi_netif = NULL;
 static esp_event_handler_instance_t instance_any_id = NULL;
 static esp_event_handler_instance_t instance_got_ip = NULL;
@@ -146,7 +146,7 @@ static int recv_exact(int sock, void *buf, size_t len) {
     return received;
 }
 
-/* Process to download a file from TCP server and save to SD card */
+/* Process to download a file from TCP server and (simulated) save to SD card */
 static esp_err_t download_file(int sock, const char* filename) {
     uint32_t net_size = 0;
     
@@ -158,17 +158,9 @@ static esp_err_t download_file(int sock, const char* filename) {
     uint32_t file_size = ntohl(net_size);
     ESP_LOGI(TAG, "Downloading %s, Size: %lu bytes", filename, file_size);
 
-    // 2. Initialize SD writer
-    if (sd_writer_init(filename) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to init sd_writer for %s", filename);
-        return ESP_FAIL;
-    }
-
-    // 3. Receive file data in chunks and write to SD
     uint8_t *buf = (uint8_t *)malloc(TCP_BUFFER_SIZE);
     if (buf == NULL) {
         ESP_LOGE(TAG, "Failed to allocate buffer");
-        sd_writer_close();
         return ESP_FAIL;
     }
 
@@ -185,13 +177,15 @@ static esp_err_t download_file(int sock, const char* filename) {
 
     // 3. Receive file data in chunks
     size_t remaining = file_size;
-    
     while (remaining > 0) {
         size_t to_read = (remaining < TCP_BUFFER_SIZE) ? remaining : TCP_BUFFER_SIZE;
         int n = recv_exact(sock, buf, to_read);
         if (n <= 0) {
             ESP_LOGE(TAG, "Socket error during download");
+#if LD_CFG_ENABLE_SD
             sd_writer_close();
+#endif
+            free(buf);
             return ESP_FAIL;
         }
 
@@ -200,6 +194,7 @@ static esp_err_t download_file(int sock, const char* filename) {
         if (sd_writer_write(buf, n) != ESP_OK) {
             ESP_LOGE(TAG, "SD Write failed");
             sd_writer_close();
+            free(buf);
             return ESP_FAIL;
         }
 #else
@@ -209,8 +204,10 @@ static esp_err_t download_file(int sock, const char* filename) {
         remaining -= n;
     }
 
-    free(buf);
+#if LD_CFG_ENABLE_SD
     sd_writer_close();
+#endif
+    free(buf);
     ESP_LOGI(TAG, "Download complete: %s", filename);
     return ESP_OK;
 }
@@ -253,6 +250,7 @@ static void update_task_func(void *pvParameters) {
                 ESP_LOGI(TAG, "Connected to %s:%d", TCP_SERVER_IP, TCP_SERVER_PORT);
 
                 // [Step 3] Message Player ID
+#if LD_CFG_ENABLE_SD
                 int pid = get_sd_card_id();
                 if (pid <= 0) pid = 1; // Fallback protection
 #else
@@ -298,9 +296,9 @@ static void update_task_func(void *pvParameters) {
     bt_receiver_init(&rx_cfg);
     bt_receiver_start();
 
-    if (main_msg_queue != NULL) {
+    if (sys_cmd_queue != NULL) {
         int msg = 1;
-        xQueueSend(main_msg_queue, &msg, 0);
+        xQueueSend(sys_cmd_queue, &msg, 0);
         ESP_LOGI(TAG, "Message sent to main queue");
     }
 
