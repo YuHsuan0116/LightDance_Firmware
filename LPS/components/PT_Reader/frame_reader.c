@@ -9,7 +9,7 @@
 /* ================= config ================= */
 
 static const uint8_t EXPECTED_VERSION_MAJOR = 1;
-static const uint8_t EXPECTED_VERSION_MINOR = 1;
+static const uint8_t EXPECTED_VERSION_MINOR = 2;
 
 #define FRAME_RAW_MAX_SIZE 8192
 #define CHECKSUM_SIZE 4  // uint8 (reserved)
@@ -144,8 +144,14 @@ esp_err_t frame_reader_read(table_frame_t* out) {
     memset(out, 0, sizeof(*out));
 
     FRESULT fr = f_read(&fp, raw, g_frame_size, &br);
-    if(fr != FR_OK || br != g_frame_size)
-        return ESP_ERR_NOT_FOUND; /* EOF */
+    if(fr != FR_OK || br != g_frame_size) {
+        if(fr == FR_OK && br < g_frame_size) {
+            ESP_LOGE(TAG, "Incomplete frame: expected %u bytes, got %u", 
+                     g_frame_size, br);
+            return ESP_ERR_INVALID_SIZE;  // 檔案損壞
+        }
+        return ESP_ERR_NOT_FOUND;  // 真正的 EOF
+    }
 
     uint8_t* p = raw;
     uint32_t sum = 0;
