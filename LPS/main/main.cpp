@@ -21,13 +21,13 @@ static const char* TAG = "APP";
 static bool frame_sys_ready = false;
 QueueHandle_t sys_cmd_queue = NULL;
 static void sys_cmd_task(void* arg) {
-    sys_cmd_msg_t msg;
+    int msg;
     
     ESP_LOGI("SYS_TASK", "System Command Task Started.");
     
     while(1) {
         if (xQueueReceive(sys_cmd_queue, &msg, portMAX_DELAY) == pdTRUE) {
-            switch(msg.cmd_type) {
+            switch(msg) {
                 case 0x08:
                     ESP_LOGD("SYS_TASK", ">>> [UPLOAD] Command Received!");
                     if(Player::getInstance().getState()!=1) Player::getInstance().stop();
@@ -40,7 +40,9 @@ static void sys_cmd_task(void* arg) {
                     vTaskDelay(pdMS_TO_TICKS(1000));
                     // esp_restart();
                     break;
-                    
+                case 1:
+                    Player::getInstance().stop();
+                    break;
                 default:
                     break;
             }
@@ -92,7 +94,7 @@ static void app_task(void* arg) {
     Player::getInstance().init();
 
     vTaskDelay(pdMS_TO_TICKS(1000));
-    sys_cmd_queue = xQueueCreate(10, sizeof(sys_cmd_msg_t));
+    sys_cmd_queue = xQueueCreate(10, sizeof(int));
     if (sys_cmd_queue != NULL) {
         xTaskCreate(sys_cmd_task, "sys_cmd_task", 4096, NULL, 5, NULL);
     } else {

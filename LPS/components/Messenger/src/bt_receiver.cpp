@@ -416,11 +416,7 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
         case 0x09: // RESET
             // Send system-level commands to the main app task queue
             if (sys_cmd_queue != NULL) {
-                sys_cmd_msg_t msg;
-                msg.cmd_type = cmd;
-                msg.data[0] = test_data[0];
-                msg.data[1] = test_data[1];
-                msg.data[2] = test_data[2];
+                int msg = cmd;
                 BaseType_t ret = xQueueSend(sys_cmd_queue, &msg, 0);
                 if (ret == pdPASS) {
                     ESP_LOGD(TAG, "Sent System CMD (0x%02X) to Task Queue", cmd);

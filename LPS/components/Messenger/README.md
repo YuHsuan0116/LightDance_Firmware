@@ -83,7 +83,7 @@ static void app_task(void* arg) {
     // ... Player initialization ...
 
     // Initialize the System Command Queue
-    sys_cmd_queue = xQueueCreate(10, sizeof(sys_cmd_msg_t));
+    sys_cmd_queue = xQueueCreate(10, sizeof(int));
     if (sys_cmd_queue != NULL) {
         xTaskCreate(sys_cmd_task, "sys_cmd_task", 4096, NULL, 5, NULL);
     }
