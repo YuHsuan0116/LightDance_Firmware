@@ -1,22 +1,22 @@
 import struct
 
+def calculate_checksum(data):
+    return sum(data) & 0xFFFFFFFF
+
 def read_control_file():
     with open("control.dat", "rb") as file:
-        file.seek(0, 2)
-        file_size = file.tell()
-        file.seek(0)
+        data = file.read()
+        file_size = len(data)
         
-        control_data = file.read(file_size)
+        control_data = data[:-4]
+        stored_checksum = struct.unpack_from('<I', data, file_size - 4)[0]
+        
         offset = 0
-        
         version = control_data[0:2]
         offset += 2
         
         print("=== control.dat ===")
         print(f"Version: {version[0]}.{version[1]}")
-        
-        if version[0] != 1 or version[1] != 1:
-            print(f"WARNING: This script only supports v1.1, but got v{version[0]}.{version[1]}")
         
         of_channel = []
         for i in range(40):
@@ -36,11 +36,16 @@ def read_control_file():
             timestamps.append(struct.unpack_from('<I', control_data, offset)[0])
             offset += 4
         
+        # 驗證 checksum
+        calc_checksum = calculate_checksum(control_data)
+        checksum_ok = (calc_checksum == stored_checksum)
+        
         print(f"Enabled OF: {sum(of_channel)}")
         print(f"Enabled Strip: {sum(1 for x in strip_channel if x > 0)}")
         print(f"Total LED: {sum(strip_channel)}")
         print(f"Frame num: {frame_num}")
         print(f"File size: {file_size} bytes")
+        print(f"Checksum: {stored_checksum:08X} ({'OK' if checksum_ok else 'ERROR'})")
         
         return version, of_channel, strip_channel, frame_num
 
@@ -50,10 +55,6 @@ def read_frame_file(of_channel, strip_channel, frame_num):
         
         print("\n=== frame.dat ===")
         print(f"Version: {version[0]}.{version[1]}")
-        
-        if version[0] != 1 or version[1] != 1:
-            print(f"WARNING: This script only supports v1.1, but got v{version[0]}.{version[1]}")
-            return
         
         of_num = sum(of_channel)
         total_leds = sum(strip_channel)

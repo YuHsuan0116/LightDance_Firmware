@@ -112,7 +112,7 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
 
     /* ===== frame_num ===== */
     uint32_t frame_num;
-    if(f_read(&fp, &frame_num, 1, &br) != FR_OK || br != 1) {
+    if(f_read(&fp, &frame_num, 4, &br) != FR_OK || br != 4) {
         goto io_fail;
     }
 
@@ -124,14 +124,8 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
         if(f_read(&fp, &timestamp, 4, &br) != FR_OK || br != 4) {
             goto io_fail;
         }
-    ESP_LOGI(TAG, "test %d", i);
         checksum_add_u32(&checksum_calc, timestamp);
     }
-
-    f_close(&fp);
-
-    ESP_LOGI(TAG, "channel info loaded, checksum OK");
-    return ESP_OK;
 
     /* ===== checksum ===== */
     if(f_read(&fp, &checksum_read, 4, &br) != FR_OK || br != 4) {
@@ -146,6 +140,10 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
         return ESP_ERR_INVALID_CRC;
     }
 
+    f_close(&fp);
+
+    ESP_LOGI(TAG, "channel info loaded, checksum OK");
+    return ESP_OK;
 
     /* ---------------- error paths ---------------- */
 

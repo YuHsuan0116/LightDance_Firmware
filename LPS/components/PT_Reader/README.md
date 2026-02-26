@@ -76,13 +76,14 @@ Initialize the pattern table reader system
 
 |  Return type   |  Description |
 |  :---  | :---  |
-| ESP_ERR_INVALID_STATE  | System already initialized (inited = True) |
-| ESP_ERR_INVALID_ARG  | Invalid control_path or frame_path |
-| ESP_ERR_NOT_FOUND  | control.dat or frame.dat missing on SD card |
-| ESP_ERR_INVALID_RESPONSE  | control.dat format error (version mismatch or invalid values) |
-| ESP_ERR_NO_MEM  | Out of memory |
+| ESP_ERR_INVALID_STATE | System already initialized (inited = true) |
+| ESP_ERR_INVALID_ARG | Invalid control_path or frame_path |
+| ESP_ERR_NOT_FOUND | control.dat or frame.dat missing on SD card |
+| ESP_FAIL | Version mismatch or I/O error |
+| ESP_ERR_INVALID_RESPONSE | control.dat format error (invalid values) |
+| ESP_ERR_NO_MEM | Out of memory |
 | ESP_ERR_INVALID_SIZE | Calculated frame size exceeds FRAME_RAW_MAX_SIZE |
-
+| ESP_ERR_INVALID_CRC | Checksum mismatch in control.dat |
 
 ---
 
@@ -105,10 +106,12 @@ Reading next frame data
 
 |  Return type   |  Description |
 |  :---  | :---  |
-| ESP_ERR_INVALID_STATE  | Called in UNINIT or STOPPED state |
-| ESP_ERR_NOT_FOUND  | No more frames to read, system enters EOF state |
-| ESP_ERR_INVALID_ARG  | Invalid playerbuffer or NULL |
-| ESP_ERR_INVALID_CRC  | Checksum mismatch in frame.dat |
+| ESP_ERR_INVALID_STATE | Called in UNINIT or STOPPED state |
+| ESP_ERR_NOT_FOUND | No more frames to read, system enters EOF state |
+| ESP_ERR_INVALID_SIZE | Frame file corrupted: incomplete frame read (expected size mismatch) |
+| ESP_ERR_INVALID_ARG | Invalid playerbuffer (NULL) |
+| ESP_ERR_INVALID_CRC | Checksum mismatch in frame.dat |
+| ESP_FAIL | Reader task stopped or I/O error |
 
 ---
 
