@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "esp_err.h"
+#include "player.hpp"
 
 #ifdef __cplusplus
 extern "C" {
