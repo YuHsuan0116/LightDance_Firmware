@@ -297,7 +297,7 @@ static void update_task_func(void *pvParameters) {
     // bt_receiver_start();
 
     if (sys_cmd_queue != NULL) {
-        int msg = 1;
+        sys_cmd_t msg = UPLOAD_SUCCESS;
         xQueueSend(sys_cmd_queue, &msg, 0);
         ESP_LOGI(TAG, "Message sent to main queue");
     }
