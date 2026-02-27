@@ -145,12 +145,7 @@ esp_err_t frame_reader_read(table_frame_t* out) {
 
     FRESULT fr = f_read(&fp, raw, g_frame_size, &br);
     if(fr != FR_OK || br != g_frame_size) {
-        if(fr == FR_OK && br < g_frame_size) {
-            ESP_LOGE(TAG, "Incomplete frame: expected %u bytes, got %u", 
-                     g_frame_size, br);
-            return ESP_ERR_INVALID_SIZE;  // 檔案損壞
-        }
-        return ESP_ERR_NOT_FOUND;  // 真正的 EOF
+        return ESP_ERR_NOT_FOUND; 
     }
 
     uint8_t* p = raw;
