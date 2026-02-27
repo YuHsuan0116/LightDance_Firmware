@@ -111,7 +111,10 @@ esp_err_t Player::updatePlayback() {
     FbComputeStatus fb_status = fb.compute(time_ms);
     if(fb_status == FbComputeStatus::ERROR) {
         ESP_LOGE(TAG, "framebuffer compute failed");
-        return ESP_FAIL;
+        Event e{};
+        e.type = EVENT_STOP;
+        ESP_RETURN_ON_ERROR(sendEvent(e), TAG, "stop event on framebuffer error");
+        // return ESP_FAIL;
     }
 
     frame_data* buf = fb.get_buffer();
