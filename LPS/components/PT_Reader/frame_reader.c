@@ -150,7 +150,15 @@ esp_err_t frame_reader_read(table_frame_t* out) {
 
     FRESULT fr = f_read(&fp, raw, g_frame_size, &br);
     if(fr != FR_OK || br != g_frame_size) {
+<<<<<<< HEAD
         return ESP_ERR_NOT_FOUND;  // 真正的 EOF
+=======
+<<<<<<< HEAD
+        return ESP_ERR_NOT_FOUND;
+=======
+        return ESP_ERR_NOT_FOUND;  // 真正的 EOF
+>>>>>>> 67480d1 (fix frame_reader.c)
+>>>>>>> 162bec9 (fix frame_reader.c)
     }
 
     uint8_t* p = raw;
