@@ -31,8 +31,10 @@ static inline void checksum_add_u8(uint32_t* sum, uint8_t b) {
 /* ================= init / deinit ================= */
 
 esp_err_t frame_reader_init(const char* path) {
-    if(!path)
+    if(!path){
+        ESP_LOGE(TAG, "path is NULL");
         return ESP_ERR_INVALID_ARG;
+    }
 
     /* -------- sanity: ch_info must be valid -------- */
 
@@ -113,8 +115,10 @@ void frame_reader_deinit(void) {
 }
 
 esp_err_t frame_reader_reset(void) {
-    if(!opened)
+    if(!opened){
+        ESP_LOGE(TAG, "frame_reader not opened");
         return ESP_ERR_INVALID_STATE;
+    }
 
     if(f_lseek(&fp, 2) != FR_OK) //skip version header
         return ESP_FAIL;
@@ -133,8 +137,10 @@ esp_err_t frame_reader_read(table_frame_t* out) {
     // ESP_LOGE(TAG, "ch_info changed after init");
     // return ESP_FAIL;
     // }
-    if(!opened)
+    if(!opened){
+        ESP_LOGE(TAG, "frame_reader not opened");
         return ESP_ERR_INVALID_STATE;
+    }
     if(!out)
         return ESP_ERR_INVALID_ARG;
 
@@ -145,12 +151,7 @@ esp_err_t frame_reader_read(table_frame_t* out) {
 
     FRESULT fr = f_read(&fp, raw, g_frame_size, &br);
     if(fr != FR_OK || br != g_frame_size) {
-        if(fr == FR_OK && br < g_frame_size) {
-            ESP_LOGE(TAG, "Incomplete frame: expected %u bytes, got %u", 
-                     g_frame_size, br);
-            return ESP_ERR_INVALID_SIZE;  // 檔案損壞
-        }
-        return ESP_ERR_NOT_FOUND;  // 真正的 EOF
+        return ESP_ERR_NOT_FOUND;
     }
 
     uint8_t* p = raw;

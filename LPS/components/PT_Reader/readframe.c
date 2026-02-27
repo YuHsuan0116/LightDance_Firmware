@@ -125,8 +125,10 @@ static void sd_reader_task(void* arg) {
 esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
     esp_err_t err;
 
-    if(inited)
+    if(inited){
+        ESP_LOGE(TAG, "frame system already initialized");
         return ESP_ERR_INVALID_STATE;
+    }
 
     /* ---------- 0. mount SD ---------- */
     err = mount_sdcard();
@@ -153,6 +155,7 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
     sem_ready = xSemaphoreCreateBinary();
 
     if(!sem_free || !sem_ready) {
+        ESP_LOGE(TAG, "Failed to create semaphores");
         frame_reader_deinit();
         return ESP_ERR_NO_MEM;
     }
@@ -176,18 +179,26 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
 /* ---- sequential read ---- */
 
 esp_err_t read_frame(table_frame_t* playerbuffer) {
-    if(!inited)
+    if(!inited){
+        ESP_LOGE(TAG, "frame system not initialized");
         return ESP_ERR_INVALID_STATE;
-    if(!playerbuffer)
+    }
+    if(!playerbuffer){
+        ESP_LOGE(TAG, "playerbuffer is NULL");
         return ESP_ERR_INVALID_ARG;
+    }
     if (eof_reached) 
         return ESP_ERR_NOT_FOUND;
 
-    if(xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE)
+    if(xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE){
+        ESP_LOGE(TAG, "Failed to take sem_ready");
         return ESP_FAIL;
+    }
 
-    if(!running)
+    if(!running){
+        ESP_LOGE(TAG, "frame system not running");
         return ESP_ERR_INVALID_STATE;
+    }
 
     memcpy(playerbuffer, &frame_buf, sizeof(table_frame_t));
 
@@ -198,8 +209,10 @@ esp_err_t read_frame(table_frame_t* playerbuffer) {
 /* ---- reset to frame 0 ---- */
 
 esp_err_t frame_reset(void) {
-    if(!inited)
+    if(!inited){
+        ESP_LOGE(TAG, "frame system not initialized");
         return ESP_ERR_INVALID_STATE;
+    }
 
     /* drain ready semaphore */
     while(xSemaphoreTake(sem_ready, 0) == pdTRUE) {}
