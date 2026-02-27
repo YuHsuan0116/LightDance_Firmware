@@ -85,8 +85,8 @@ static void sd_reader_task(void* arg) {
             continue;
 
         /* ---- command handling ---- */
-        if (cmd == CMD_RESET) {
-            frame_reader_reset(); //correction
+        if(cmd == CMD_RESET) {
+            frame_reader_reset();  // correction
             cmd = CMD_NONE;
             xSemaphoreGive(sem_free);
             continue;
@@ -98,7 +98,7 @@ static void sd_reader_task(void* arg) {
         if(err == ESP_ERR_NOT_FOUND) {
             ESP_LOGI(TAG, "EOF reached");
             eof_reached = true;
-            
+
             xSemaphoreGive(sem_ready);
             continue;
         }
@@ -125,7 +125,7 @@ static void sd_reader_task(void* arg) {
 esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
     esp_err_t err;
 
-    if(inited){
+    if(inited) {
         ESP_LOGE(TAG, "frame system already initialized");
         return ESP_ERR_INVALID_STATE;
     }
@@ -164,7 +164,7 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
 
     /* ---------- 4. runtime ---------- */
     running = true;
-    cmd     = CMD_NONE;
+    cmd = CMD_NONE;
     eof_reached = false;
 
     /* ---------- 5. create SD reader task ---------- */
@@ -179,23 +179,23 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
 /* ---- sequential read ---- */
 
 esp_err_t read_frame(table_frame_t* playerbuffer) {
-    if(!inited){
+    if(!inited) {
         ESP_LOGE(TAG, "frame system not initialized");
         return ESP_ERR_INVALID_STATE;
     }
-    if(!playerbuffer){
+    if(!playerbuffer) {
         ESP_LOGE(TAG, "playerbuffer is NULL");
         return ESP_ERR_INVALID_ARG;
     }
-    if (eof_reached) 
+    if(eof_reached)
         return ESP_ERR_NOT_FOUND;
 
-    if(xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE){
+    if(xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to take sem_ready");
         return ESP_FAIL;
     }
 
-    if(!running){
+    if(!running) {
         ESP_LOGE(TAG, "frame system not running");
         return ESP_ERR_INVALID_STATE;
     }
@@ -209,14 +209,14 @@ esp_err_t read_frame(table_frame_t* playerbuffer) {
 /* ---- reset to frame 0 ---- */
 
 esp_err_t frame_reset(void) {
-    if(!inited){
+    if(!inited) {
         ESP_LOGE(TAG, "frame system not initialized");
         return ESP_ERR_INVALID_STATE;
     }
 
     /* drain ready semaphore */
     while(xSemaphoreTake(sem_ready, 0) == pdTRUE) {}
-    
+
     running = true;
     eof_reached = false;
     cmd = CMD_RESET;
@@ -258,7 +258,7 @@ esp_err_t frame_system_deinit(void) {
 /* ---- end of file ---- */
 
 bool is_eof_reached(void) {
-    if (!inited) {
+    if(!inited) {
         return false;
     }
     return eof_reached;
@@ -269,23 +269,23 @@ int get_sd_card_id(void) {
     if(g_sd_card == NULL) {
         return 0;
     }
-    
+
     char volume_label[20];
     FRESULT res = f_getlabel("0:", volume_label, NULL);
-    
+
     if(res != FR_OK || volume_label[0] == '\0') {
         return 0;
     }
     if(strncmp(volume_label, "LPS", 3) != 0) {
         return 0;
     }
-    
+
     char* num_str = volume_label + 3;
     int id = atoi(num_str);
-    
+
     if(id >= 1 && id <= 31) {
         return id;
     }
-    
+
     return 0;
 }

@@ -126,7 +126,6 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
         checksum_add_u32(&checksum_calc, timestamp);
     }
 
-
     /* ===== checksum ===== */
     if(f_read(&fp, &checksum_read, 4, &br) != FR_OK || br != 4) {
         goto io_fail;
