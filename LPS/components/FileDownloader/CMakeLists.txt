@@ -5,5 +5,3 @@ idf_component_register(
 
     REQUIRES fatfs sdmmc esp_wifi lwip nvs_flash PT_Reader Messenger
 )
-
-                       
