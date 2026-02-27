@@ -58,6 +58,7 @@ static void sys_cmd_task(void* arg) {
 
                 default:
                     break;
+                    
             }
         }
     }
