@@ -56,6 +56,7 @@ esp_err_t ws2812b_init(ws2812b_dev_t* ws2812b, gpio_num_t gpio_num, uint16_t pix
 
     // 4. RMT Channel Setup
     ESP_GOTO_ON_ERROR(ws2812b_init_channel(gpio_num, pixel_num, &ws2812b->rmt_channel), err, TAG, "Channel init failed");
+    ESP_GOTO_ON_ERROR(gpio_set_drive_capability(gpio_num, GPIO_DRIVE_CAP_0), err, TAG, "Failed to set drive capability");
 
     // 5. Enable RMT
     ESP_GOTO_ON_ERROR(rmt_enable(ws2812b->rmt_channel), err, TAG, "RMT enable failed");
