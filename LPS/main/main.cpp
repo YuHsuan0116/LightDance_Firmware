@@ -79,9 +79,10 @@ static void app_task(void* arg) {
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     if(sd_err != ESP_OK) {
-        ESP_LOGE(TAG, "frame system init failed, halt");
-        vTaskDelay(portMAX_DELAY); // Halt task if critical files are missing
+        
+        // vTaskDelay(portMAX_DELAY); // Halt task if critical files are missing
         frame_sys_ready = false;
+        ESP_LOGE(TAG, "frame system init failed, halt");
     } else {
         frame_sys_ready = true;
 
