@@ -115,24 +115,6 @@ static void wifi_init_sta(void)
     ESP_LOGI(TAG, "wifi_init_sta finished.");
 }
 
-static void wifi_stop_cleanup(void) {
-    s_is_stopping = true;
-    esp_wifi_stop();
-    if (instance_any_id != NULL) {
-        esp_event_handler_instance_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, instance_any_id);
-        instance_any_id = NULL;
-    }
-    if (instance_got_ip != NULL) {
-        esp_event_handler_instance_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, instance_got_ip);
-        instance_got_ip = NULL;
-    }
-    esp_wifi_deinit();
-    if (s_wifi_event_group != NULL) {
-        vEventGroupDelete(s_wifi_event_group);
-        s_wifi_event_group = NULL;
-    }
-}
-
 /* Helper function to receive exact number of bytes */
 static int recv_exact(int sock, void *buf, size_t len) {
     size_t received = 0;
