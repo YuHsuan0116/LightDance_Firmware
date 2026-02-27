@@ -82,28 +82,12 @@ QueueHandle_t sys_cmd_queue = NULL;
 static void app_task(void* arg) {
     // ... Player initialization ...
 
-    // Initialize the System Command Queue
-    sys_cmd_queue = xQueueCreate(10, sizeof(int));
+    // Initialize the System Command Queue using the enum type
+    sys_cmd_queue = xQueueCreate(10, sizeof(sys_cmd_t));
     if (sys_cmd_queue != NULL) {
         xTaskCreate(sys_cmd_task, "sys_cmd_task", 4096, NULL, 5, NULL);
     }
-
-    if (player_id > 0) {
-        // Define receiver configuration
-        bt_receiver_config_t rx_cfg = {
-            .feedback_gpio_num = -1,     // Debug GPIO (Set to -1 if unused)
-            .manufacturer_id = 0xFFFF,   // Must match the Sender's Manufacturer ID
-            .my_player_id = player_id,   // This device's ID (Used for Target Mask check)
-            .sync_window_us = 500000,    // Sync window size (e.g., 500ms)
-            .queue_size = 20,            // Depth of the command queue
-        };
-        bt_receiver_init(&rx_cfg);
-        bt_receiver_start();
-    } else {
-        ESP_LOGE(TAG, "Invalid Player ID (%d). Skipping BT init.", player_id);
-    }
-    // ...
-}
+// ...
 ```
 
 ### 2. Stop Receiving
@@ -162,14 +146,14 @@ When a `CHECK` command is received, the receiver broadcasts an ACK packet.
 
 These values are defined in the `timer_timeout_cb` function within `bt_receiver.cpp`:
 
-| Type Code | Action | Data Payload Usage | Visual ACK |
-| --- | --- | --- | --- |
-| `0x01` | **Play** | None | **YES** (Red Light) |
-| `0x02` | **Pause** | None | No |
-| `0x03` | **Stop** | None | No |
-| `0x04` | **Release** | None | No |
-| `0x05` | **Test** | Uses `Data[0-2]` for RGB | No |
-| `0x06` | **Cancel** | `Data[0]` contains the target `CMD_ID` to cancel | Stops LED **only** if canceling PLAY |
-| `0x07` | **Check** | Triggers immediate status report (ACK) | No |
-| `0x08` | **Upload** | Triggers Wi-Fi/HTTP Server via `sys_cmd_queue` | YES (Solid GREEN) |
-| `0x09` | **Reset** | Triggers ESP32 reboot via `sys_cmd_queue` | No |
+| Type Code | Enum (`lps_cmd_t`) | Action | Data | Visual ACK |
+| --- | --- | --- | --- | --- |
+| `0x01` | `LPS_CMD_PLAY` | **Play** | None | **YES** (RED) |
+| `0x02` | `LPS_CMD_PAUSE` | **Pause** | None | No |
+| `0x03` | `LPS_CMD_STOP` | **Stop** | None | No |
+| `0x04` | `LPS_CMD_RELEASE` | **Release** | None | No |
+| `0x05` | `LPS_CMD_TEST` | **Test** | Uses `Data[0-2]` for RGB | No |
+| `0x06` | `LPS_CMD_CANCEL` | **Cancel** | `Data[0]` contains the target `CMD_ID` to cancel | Stops LED **only** if canceling PLAY |
+| `0x07` | `LPS_CMD_CHECK` | **Check** | None | No |
+| `0x08` | `LPS_CMD_UPLOAD` | **Upload** | None | YES (GREEN) |
+| `0x09` | `LPS_CMD_RESET` | **Reset** | None | No |

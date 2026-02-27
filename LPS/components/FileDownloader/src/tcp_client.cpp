@@ -274,28 +274,6 @@ static void update_task_func(void *pvParameters) {
         ESP_LOGE(TAG, "Wi-Fi connection failed.");
     }
 
-    // // [Step 5] Stop Wi-Fi
-    // ESP_LOGI(TAG, ">>> Step 6: Stop Wi-Fi");
-    // ESP_LOGI(TAG, "Sent DONE to server.");
-    // wifi_stop_cleanup();
-    // vTaskDelay(pdMS_TO_TICKS(500));
-
-    // // [Step 6] Re-init BLE
-    // ESP_LOGI(TAG, ">>> Step 7: Re-init BLE");
-    // int pid = get_sd_card_id();
-    // if (pid <= 0) pid = 1;
-
-    // bt_receiver_config_t rx_cfg = {
-    //     .feedback_gpio_num = -1,
-    //     .manufacturer_id = 0xFFFF,
-    //     .my_player_id = pid, 
-    //     .sync_window_us = 500000,
-    //     .queue_size = 20,
-    // };
-    
-    // bt_receiver_init(&rx_cfg);
-    // bt_receiver_start();
-
     if (sys_cmd_queue != NULL) {
         sys_cmd_t msg = UPLOAD_SUCCESS;
         xQueueSend(sys_cmd_queue, &msg, 0);
