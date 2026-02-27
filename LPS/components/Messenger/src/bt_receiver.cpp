@@ -361,26 +361,26 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
     
     // Dispatch to Player module
     switch(cmd) {
-        case 0x01: // PLAY
+        case LPS_CMD_PLAY: // PLAY
             Player::getInstance().play();
             break;
-        case 0x02: // PAUSE
+        case LPS_CMD_PAUSE: // PAUSE
             Player::getInstance().pause();
             break;
-        case 0x03: // STOP
+        case LPS_CMD_STOP: // STOP
             Player::getInstance().stop();
             break;
-        case 0x04: // RELEASE
+        case LPS_CMD_RELEASE: // RELEASE
             Player::getInstance().release();
             break;
-        case 0x05: // TEST (Color)
+        case LPS_CMD_TEST: // TEST (Color)
             if (test_data[0] == 0 && test_data[1] == 0 && test_data[2] == 0) {
                 Player::getInstance().test();
             } else {
                 Player::getInstance().test(test_data[0], test_data[1], test_data[2]);
             }
             break;
-        case 0x06: // CANCEL
+        case LPS_CMD_CANCEL: // CANCEL
             {
                 uint8_t target_id = test_data[0];
                 if (target_id < MAX_CONCURRENT_ACTIONS) {
@@ -396,7 +396,7 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
                 }
             }
             break;
-        case 0x07: // CHECK (Status Ping)
+        case LPS_CMD_CHECK: // CHECK (Status Ping)
         {
             int8_t state = Player::getInstance().getState();
             int64_t now = esp_timer_get_time();
@@ -412,11 +412,11 @@ static void IRAM_ATTR timer_timeout_cb(void* arg) {
                              state);
             break;
         }
-        case 0x08: // UPLOAD
-        case 0x09: // RESET
+        case LPS_CMD_UPLOAD: // UPLOAD
+        case LPS_CMD_RESET: // RESET
             // Send system-level commands to the main app task queue
             if (sys_cmd_queue != NULL) {
-                int msg = cmd;
+                sys_cmd_t msg = (sys_cmd_t)cmd;
                 BaseType_t ret = xQueueSend(sys_cmd_queue, &msg, 0);
                 if (ret == pdPASS) {
                     ESP_LOGD(TAG, "Sent System CMD (0x%02X) to Task Queue", cmd);

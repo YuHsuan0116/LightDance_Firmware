@@ -21,26 +21,26 @@ static const char* TAG = "APP";
 static bool frame_sys_ready = false;
 QueueHandle_t sys_cmd_queue = NULL;
 static void sys_cmd_task(void* arg) {
-    int msg;
+    sys_cmd_t msg;
     
     ESP_LOGI("SYS_TASK", "System Command Task Started.");
     
     while(1) {
         if (xQueueReceive(sys_cmd_queue, &msg, portMAX_DELAY) == pdTRUE) {
             switch(msg) {
-                case 0x08:
+                case UPLOAD:
                     ESP_LOGD("SYS_TASK", ">>> [UPLOAD] Command Received!");
                     if(Player::getInstance().getState()!=1) Player::getInstance().stop();
                     Player::getInstance().test(0, 255, 0);
                     tcp_client_start_update_task();
                     break;
                     
-                case 0x09:
+                case RESET:
                     ESP_LOGD("SYS_TASK", ">>> [RESET] Command Received! Rebooting in 1s...");
                     vTaskDelay(pdMS_TO_TICKS(1000));
                     esp_restart();
                     break;
-                case 1:
+                case UPLOAD_SUCCESS:
                     Player::getInstance().stop();
                     ESP_LOGD("SYS_TASK", ">>> [RESET] Download Completed! Rebooting in 1s...");
                     vTaskDelay(pdMS_TO_TICKS(1000));
