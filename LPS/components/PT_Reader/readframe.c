@@ -29,6 +29,7 @@ static TaskHandle_t sd_task = NULL;
 static bool inited = false;
 static bool running = false;
 static bool eof_reached = false;
+static bool has_error = false;
 
 /* ================= SD task command ================= */
 
@@ -36,6 +37,12 @@ typedef enum {
     CMD_NONE = 0,
     CMD_RESET,
 } sd_cmd_t;
+
+typedef struct{
+    esp_err_t err;
+} frame_status_t;
+
+static volatile frame_status_t g_frame_status = { .err = ESP_OK };
 
 static sd_cmd_t cmd = CMD_NONE;
 
@@ -87,13 +94,23 @@ static void sd_reader_task(void* arg) {
         /* ---- command handling ---- */
         if (cmd == CMD_RESET) {
             frame_reader_reset(); //correction
+            eof_reached = false;
+            has_error = false;
+            g_frame_status.err = ESP_OK;
             cmd = CMD_NONE;
             xSemaphoreGive(sem_free);
+            continue;   
+        }
+        if (has_error) {
+            xSemaphoreGive(sem_free);
+            vTaskDelay(pdMS_TO_TICKS(50));  // 避免 tight loop
             continue;
         }
 
+
         /* ---- read one frame ---- */
         esp_err_t err = frame_reader_read(&frame_buf);
+        g_frame_status.err = err;
 
         if(err == ESP_ERR_NOT_FOUND) {
             ESP_LOGI(TAG, "EOF reached");
@@ -105,9 +122,9 @@ static void sd_reader_task(void* arg) {
 
         if(err != ESP_OK) {
             ESP_LOGE(TAG, "frame_reader_read failed: %s", esp_err_to_name(err));
-            running = false;
+            has_error = true;
             xSemaphoreGive(sem_ready);
-            break;
+            continue;
         }
 
         /* buffer ready */
@@ -163,6 +180,8 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
     xSemaphoreGive(sem_free); /* buffer initially free */
 
     /* ---------- 4. runtime ---------- */
+    has_error = false;
+    g_frame_status.err = ESP_OK;
     running = true;
     cmd     = CMD_NONE;
     eof_reached = false;
@@ -179,31 +198,29 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
 /* ---- sequential read ---- */
 
 esp_err_t read_frame(table_frame_t* playerbuffer) {
-    if(!inited){
+    if (!inited) {
         ESP_LOGE(TAG, "frame system not initialized");
         return ESP_ERR_INVALID_STATE;
     }
-    if(!playerbuffer){
+    if (!playerbuffer) {
         ESP_LOGE(TAG, "playerbuffer is NULL");
         return ESP_ERR_INVALID_ARG;
     }
-    if (eof_reached) 
-        return ESP_ERR_NOT_FOUND;
 
-    if(xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE){
+    if (xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to take sem_ready");
         return ESP_FAIL;
     }
 
-    if(!running){
-        ESP_LOGE(TAG, "frame system not running");
-        return ESP_ERR_INVALID_STATE;
+    esp_err_t err = g_frame_status.err;
+
+    if (err == ESP_OK) {
+        memcpy(playerbuffer, &frame_buf, sizeof(table_frame_t));
+        xSemaphoreGive(sem_free);
+        return ESP_OK;
     }
-
-    memcpy(playerbuffer, &frame_buf, sizeof(table_frame_t));
-
     xSemaphoreGive(sem_free);
-    return ESP_OK;
+    return err;
 }
 
 /* ---- reset to frame 0 ---- */
@@ -217,8 +234,10 @@ esp_err_t frame_reset(void) {
     /* drain ready semaphore */
     while(xSemaphoreTake(sem_ready, 0) == pdTRUE) {}
     
-    running = true;
     eof_reached = false;
+    has_error = false;
+    g_frame_status.err = ESP_OK;
+
     cmd = CMD_RESET;
     xSemaphoreGive(sem_free);
     return ESP_OK;
@@ -250,6 +269,9 @@ esp_err_t frame_system_deinit(void) {
     sd_task = NULL;
     inited = false;
     eof_reached = false;
+    has_error = false;
+    g_frame_status.err = ESP_OK;
+    cmd = CMD_NONE;
 
     ESP_LOGI(TAG, "frame system deinit");
     return ESP_OK;
