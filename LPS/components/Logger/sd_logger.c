@@ -99,7 +99,9 @@ esp_err_t sd_log_init(const char* path) {
     g_buf->running = true;
     
     orig_vprintf = esp_log_set_vprintf(ring_buffer_write);
+
     vTaskDelay(pdMS_TO_TICKS(100));
+    ESP_LOGI(TAG, "logger init finish");
     sd_log_flush();
     return ESP_OK;
 }
