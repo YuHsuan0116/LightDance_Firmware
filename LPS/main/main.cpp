@@ -50,6 +50,7 @@ static void sys_cmd_task(void* arg) {
                 case RESET:
                     ESP_LOGD("SYS_TASK", ">>> [RESET] Command Received! Rebooting in 1s...");
                     vTaskDelay(pdMS_TO_TICKS(1000));
+                    sd_log_flush();
                     esp_restart();
                     break;
 
@@ -57,6 +58,7 @@ static void sys_cmd_task(void* arg) {
                     ESP_LOGD("SYS_TASK", ">>> [RESET] Download Completed! Rebooting in 1s...");
                     Player::getInstance().stop();  // Turn off LEDs before reboot
                     vTaskDelay(pdMS_TO_TICKS(1000));
+                    sd_log_flush();
                     esp_restart();  // Reboot to apply new files and restore clean memory state
                     break;
 
@@ -95,6 +97,7 @@ static void app_task(void* arg) {
         if(log_err != ESP_OK) {
             ESP_LOGE(TAG, "SD Logger init failed: %s", esp_err_to_name(log_err));
         }
+        ESP_LOGI(TAG, "logger init success");
         sd_log_flush();
 #endif
     }
