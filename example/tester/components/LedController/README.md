@@ -1,99 +1,113 @@
-# ESP32 Hybrid LED Driver System
+﻿# LedController Component
 
-This project implements a high-performance, modular LED control system for the ESP32 (ESP-IDF). It supports a hybrid architecture combining **WS2812B Addressable Strips** (via RMT) and **PCA9955B Constant Current Drivers** (via I2C).
+`LedController` is the hardware output layer for LightDance.
+It provides one API surface for two physical LED backends:
 
-## 📂 Module Structure
+- WS2812B strips over RMT (`ws2812b.c`)
+- PCA9955B constant-current drivers over I2C (`pca9955b.c`)
 
-The project is organized into four distinct layers, ranging from hardware configuration to high-level application control.
+This README is high level. Detailed implementation notes are under [`docs/`](docs/).
 
-| Module | File Name | Description |
-| :--- | :--- | :--- |
-| **01** | [BoardConfig](docs/01-BoardConfig.md) | **HAL Config.** Defines GPIO pins... |
-| **02** | [ws2812b_hal](docs/02-ws2812b.md) | **RMT Driver.** Optimized, non-blocking... |
-| **03** | [pca9955b_hal](docs/03-pca9955b.md) | **I2C Driver.** Shadow-buffered driver... |
-| **04** | [LedController](docs/04-LedController.md) | **Application API.** Unified C++ class... |
+## Scope
 
-## 🏗 Architecture
+This component is responsible for:
 
-```mermaid
-graph TD
-    UserApp[User Application] --> LedController
-    
-    subgraph "High Level"
-        LedController[04 - LedController]
-    end
+- Driver lifecycle (`init`, staged writes, `show`, `deinit`)
+- Channel routing from logical channel index to backend driver
+- Batched flush strategy in `show()`
+- Utility operations (`fill`, `black_out`, debug dump)
 
-    subgraph "Drivers"
-        WS[02 - WS2812B HAL]
-        PCA[03 - PCA9955B HAL]
-    end
+This component is not responsible for:
 
-    subgraph "Configuration"
-        Config[01 - BoardConfig]
-    end
+- Animation timeline or interpolation (`Player`)
+- Color policy (gamma/brightness/HSV interpolation in upper layers)
+- Board ownership rules outside `ld_core` contracts
 
-    LedController --> WS
-    LedController --> PCA
-    WS --> Config
-    PCA --> Config
+## Public API
+
+Declared in `include/LedController.hpp`:
+
+- `esp_err_t init()`
+- `esp_err_t write_channel(int ch_idx, const grb8_t* data)`
+- `esp_err_t write_frame(const frame_data* frame)`
+- `esp_err_t show()`
+- `esp_err_t deinit()`
+- `esp_err_t fill(grb8_t color)`
+- `esp_err_t black_out()`
+- `void print_buffer()`
+
+Compatibility alias:
+
+- `write_buffer(...)` calls `write_channel(...)`
+
+## Runtime Model
+
+- `write_channel` and `write_frame` stage data in backend buffers.
+- `show()` performs the actual hardware transaction.
+- `show()` runs split batches for WS and PCA halves.
+- `write_frame()` fails fast; `show()` is best-effort and returns last error.
+
+## Dependencies
+
+From `components/LedController/CMakeLists.txt`:
+
+- `driver`
+- `esp_timer`
+- `freertos`
+- `log`
+- `ld_core`
+
+## Folder Layout
+
+```text
+components/LedController/
+|-- include/
+|   |-- LedController.hpp
+|   |-- ws2812b.h
+|   |-- ws2812b_encoder.h
+|   `-- pca9955b.h
+|-- src/
+|   |-- LedController.cpp
+|   |-- ws2812b.c
+|   |-- ws2812b_encoder.c
+|   `-- pca9955b.c
+|-- docs/
+|   |-- 00-overview.md
+|   |-- 01-public-api.md
+|   |-- 02-topology-and-config.md
+|   |-- 03-ws2812b-driver.md
+|   |-- 04-pca9955b-driver.md
+|   `-- 05-runtime-and-debug.md
+`-- README.md
 ```
 
-## 🚀 Quick Start (ESP-IDF)
+## Documentation Map
 
-### 1. Configuration
-Open `BoardConfig.h` to define your hardware setup:
-* Set `WS2812B_NUM` for the number of strips.
-* Set `PCA9955B_NUM` for the number of driver ICs.
-* Update `BOARD_HW_CONFIG` with your specific GPIO pins.
+- [`docs/00-overview.md`](docs/00-overview.md): boundaries, ownership, and data flow.
+- [`docs/01-public-api.md`](docs/01-public-api.md): API contracts and channel routing behavior.
+- [`docs/02-topology-and-config.md`](docs/02-topology-and-config.md): `ld_core` topology/config contract.
+- [`docs/03-ws2812b-driver.md`](docs/03-ws2812b-driver.md): WS2812B RMT driver internals.
+- [`docs/04-pca9955b-driver.md`](docs/04-pca9955b-driver.md): PCA9955B I2C driver internals.
+- [`docs/05-runtime-and-debug.md`](docs/05-runtime-and-debug.md): runtime semantics, failure behavior, debugging.
 
-### 2. Integration Example
-Include the main header in your C++ application (`main.cpp`):
+## Minimal Example
 
 ```cpp
 #include "LedController.hpp"
-#include "BoardConfig.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 
-// Define main entry point with C linkage for ESP-IDF
 extern "C" void app_main(void) {
-    
-    // 1. Setup Pixel Counts (CRITICAL: Must be done before init)
-    // Example: Strip 0 has 60 LEDs, Strip 1 has 144 LEDs...
-    ch_info.rmt_strips[0] = 60;
-    ch_info.rmt_strips[1] = 144; 
-    // ... initialize other active channels
+    for (int i = 0; i < LD_BOARD_WS2812B_NUM; ++i) {
+        ch_info.rmt_strips[i] = 60;
+    }
 
-    // 2. Instantiate & Initialize Controller
-    static LedController leds;
+    LedController leds;
     if (leds.init() != ESP_OK) {
-        ESP_LOGE("MAIN", "Failed to initialize LED Controller");
         return;
     }
 
-    // 3. Main Loop
-    while (1) {
-        // Set a global color (Red)
-        leds.fill(255, 0, 0);
-        
-        // Update the display
-        leds.show();
-        
-        // Delay 100ms
-        vTaskDelay(pdMS_TO_TICKS(100));
-    }
+    grb8_t red = grb8(255, 0, 0);
+    leds.write_channel(0, &red);
+    leds.show();
 }
 ```
 
-## ⚡ Key Features & Technical Notes
-
-### 1. Interleaved Parallel Execution (Anti-Glitch Strategy)
-The `show()` function utilizes a **split-batch strategy**. Instead of firing all RMT channels at once, it interleaves RMT and I2C commands (e.g., `WS_Batch1` -> `PCA_Batch1` -> `WS_Batch2` -> `PCA_Batch2`).
-
-> **⚠️ Why?** > It was observed that triggering all **8 RMT channels simultaneously** caused signal instability and **glitches** on the data lines due to high system resource contention. Splitting the transmission load into two halves eliminates these glitches while maintaining high frame rates by overlapping I2C blocking time with RMT transmission time.
-
-### 2. Robustness (I2C Auto-Recovery)
-The I2C driver actively monitors for transmission failures. If a PCA9955B chip resets (losing its `IREF` current gain settings) due to a power dip, the driver automatically detects this and restores the registers in the next frame, preventing permanent display blackouts.
-
-### 3. Zero-Copy Architecture
-Where possible, data is written directly to the driver's internal buffers using `write_buffer()`. The PCA9955B driver handles the necessary `GRB` to `RGB` format conversion internally during the write process.
