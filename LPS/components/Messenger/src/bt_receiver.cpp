@@ -204,19 +204,25 @@ static void send_ack_task(void *arg) {
     
     raw_data[idx++] = 2; raw_data[idx++] = 0x01; raw_data[idx++] = 0x06;
     
-    // Payload Length = 12
-    raw_data[idx++] = 12; 
-    raw_data[idx++] = 0xFF; raw_data[idx++] = 0xFF; raw_data[idx++] = 0xFF; // Type + Mfg ID
-    raw_data[idx++] = CMD_TYPE_ACK; // 0x07
+    // Payload Length = 14
+    raw_data[idx++] = 14; 
+    raw_data[idx++] = 0xFF;
+    raw_data[idx++] = 0xFF;
+    raw_data[idx++] = 0xFF;
+
+    raw_data[idx++] = 0x4C; 
+    raw_data[idx++] = 0x44; 
+    raw_data[idx++] = CMD_TYPE_ACK;
     
     raw_data[idx++] = params->my_id;
     raw_data[idx++] = params->cmd_id;
     raw_data[idx++] = params->cmd_type;
     
-    raw_data[idx++] = (params->delay_val >> 24) & 0xFF;
-    raw_data[idx++] = (params->delay_val >> 16) & 0xFF;
-    raw_data[idx++] = (params->delay_val >> 8) & 0xFF;
-    raw_data[idx++] = (params->delay_val) & 0xFF;
+    uint32_t delay_ms = params->delay_val / 1000;
+    raw_data[idx++] = (delay_ms >> 24) & 0xFF;
+    raw_data[idx++] = (delay_ms >> 16) & 0xFF;
+    raw_data[idx++] = (delay_ms >> 8) & 0xFF;
+    raw_data[idx++] = (delay_ms) & 0xFF;
 
     raw_data[idx++] = params->state;
     
@@ -248,13 +254,13 @@ static void send_ack_task(void *arg) {
 // Parse advertising packet directly in ISR context for ultra-low latency
 static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
     int64_t now_us = esp_timer_get_time();
-    // Basic HCI LE Meta Event header check
     if(data[0] != 0x04 || data[1] != 0x3E || data[3] != 0x02) return;
 
     uint8_t num_reports = data[4];
     uint8_t* payload = &data[5];
 
     for(int i = 0; i < num_reports; i++) {
+        uint8_t* mac = &payload[2];
         uint8_t data_len = payload[8];
         uint8_t* adv_data = &payload[9];
         int8_t rssi = payload[9 + data_len];
@@ -264,14 +270,10 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
             uint8_t ad_len = adv_data[offset++];
             if(ad_len == 0) break;
             uint8_t ad_type = adv_data[offset++];
-
-            // Check if it's Manufacturer Specific Data (0xFF)
-            if(ad_type == 0xFF && ad_len >= 16) {
-                uint16_t target_id = s_config.manufacturer_id;
-                // Verify Manufacturer ID
-                if(adv_data[offset] == (target_id & 0xFF) && adv_data[offset + 1] == ((target_id >> 8) & 0xFF)) {
+            if(ad_type == 0xFF && ad_len == 22) {
+                if(adv_data[offset] == 0xFF && adv_data[offset + 1] == 0xFF && adv_data[offset+2] == 0x4C && adv_data[offset + 3] == 0x44) {
                     uint64_t rcv_mask = 0;
-                    for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 3 + k] << (k * 8));
+                    for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 5 + k] << (k * 8));
 
                     bool is_target = false;
                     if (rcv_mask == 0xFFFFFFFFFFFFFFFFULL) {
@@ -282,27 +284,35 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
                             is_target = true;
                         }
                     }
-
                     if(is_target) {
-                        uint8_t rcv_cmd_id = (adv_data[offset + 2] >> 4) & 0x0F;
-                        uint8_t rcv_cmd = adv_data[offset + 2] & 0x0F;
-                        uint32_t rcv_delay = (adv_data[offset + 11] << 24) | (adv_data[offset + 12] << 16) | (adv_data[offset + 13] << 8) | (adv_data[offset + 14]);
-                        uint32_t rcv_prep_time = (adv_data[offset + 15] << 24) | (adv_data[offset + 16] << 16) | (adv_data[offset + 17] << 8) | (adv_data[offset + 18]);
-                        uint8_t rcv_data[3] = {adv_data[offset + 19], adv_data[offset + 20], adv_data[offset + 21]};
-
-                        // Push raw data to FreeRTOS queue
+                        uint8_t rcv_cmd_id = (adv_data[offset + 4] >> 4) & 0x0F;
+                        uint8_t rcv_cmd = adv_data[offset + 4] & 0x0F;
+                        uint32_t rcv_delay_ms = (adv_data[offset + 13] << 24) | (adv_data[offset + 14] << 16) | (adv_data[offset + 15] << 8) | (adv_data[offset + 16]);
+                        uint32_t rcv_prep_ms = 0;
+                        uint8_t rcv_data[3] = {0, 0, 0};
+                        
+                        int spec_idx = offset + 17;
+                        if (rcv_cmd == 0x01) { 
+                            rcv_prep_ms = (adv_data[spec_idx] << 24) | (adv_data[spec_idx + 1] << 16) | (adv_data[spec_idx + 2] << 8) | adv_data[spec_idx + 3];
+                        } else if (rcv_cmd == 0x05) { 
+                            rcv_data[0] = adv_data[spec_idx];
+                            rcv_data[1] = adv_data[spec_idx + 1];
+                            rcv_data[2] = adv_data[spec_idx + 2];
+                        } else if (rcv_cmd == 0x06) { 
+                            rcv_data[0] = adv_data[spec_idx];
+                        }
                         ble_rx_packet_t pkt;
                         pkt.cmd_id = rcv_cmd_id;
                         pkt.cmd_type = rcv_cmd;
                         pkt.target_mask = rcv_mask;
-                        pkt.delay_val = rcv_delay;
-                        pkt.prep_time = rcv_prep_time;
+                        pkt.delay_val = rcv_delay_ms * 1000ULL;
+                        pkt.prep_time = rcv_prep_ms * 1000ULL;
                         pkt.data[0] = rcv_data[0];
                         pkt.data[1] = rcv_data[1];
                         pkt.data[2] = rcv_data[2];
                         pkt.rssi = rssi;
                         pkt.rx_time_us = now_us;
-
+                        memcpy(pkt.mac, mac, 6);
                         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
                         xQueueSendFromISR(s_adv_queue, &pkt, &xHigherPriorityTaskWoken);
                         if(xHigherPriorityTaskWoken) portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -442,7 +452,7 @@ static void sync_process_task(void* arg) {
     bool collecting = false;
     bool window_expired = false;
     int64_t window_start_time = 0;
-
+    uint8_t current_mac[6] = {0};
     ESP_LOGI(TAG, "Sync Task Running...");
 
     while(s_is_running) {
@@ -464,6 +474,7 @@ static void sync_process_task(void* arg) {
                 count = 1;
                 window_start_time = now;
                 window_expired = false;
+                memcpy(current_mac, pkt.mac, 6);
             }
             else {
                 if (pkt.cmd_id == current_cmd_id) {
@@ -491,9 +502,9 @@ static void sync_process_task(void* arg) {
                             esp_timer_start_once(target_slot->timer_handle, wait_us);
                             
                             if (!s_visual_ack_done[current_cmd_id]) {
-                                ESP_LOGI(TAG, "LOCKED -> ID:%d, CMD:0x%02X, AvgRSSI:%d dBm (Cnt:%d), Delay:%lld ms", 
+                                ESP_LOGI(TAG, "LOCKED -> MAC:%02X:%02X:%02X:%02X:%02X:%02X, ID:%d, CMD:0x%02X, AvgRSSI:%d dBm (Cnt:%d), Delay:%lld ms", 
+                                         current_mac[5], current_mac[4], current_mac[3], current_mac[2], current_mac[1], current_mac[0],
                                          current_cmd_id, current_cmd, avg_rssi, count, wait_us/1000);
-                                         
                                 // Visual ACK: Flash RED led instantly for PLAY
                                 if (current_cmd == 0x01 && current_prep_time > 0) {
                                     Player::getInstance().test(255, 0, 0); 
@@ -524,6 +535,7 @@ static void sync_process_task(void* arg) {
                     sum_rssi = pkt.rssi;
                     window_start_time = now;
                     window_expired = false;
+                    memcpy(current_mac, pkt.mac, 6);
                     sum_target = (pkt.rx_time_us + pkt.delay_val);
                     count = 1;
                 }
@@ -551,9 +563,9 @@ static void sync_process_task(void* arg) {
                              esp_timer_start_once(target_slot->timer_handle, wait_us);
                              
                              if (!s_visual_ack_done[current_cmd_id]) {
-                                 ESP_LOGI(TAG, "LOCKED -> ID:%d, CMD:0x%02X, AvgRSSI:%d dBm (Cnt:%d), Delay:%lld ms", 
+                                 ESP_LOGI(TAG, "LOCKED -> MAC:%02X:%02X:%02X:%02X:%02X:%02X, ID:%d, CMD:0x%02X, AvgRSSI:%d dBm (Cnt:%d), Delay:%lld ms", 
+                                          current_mac[5], current_mac[4], current_mac[3], current_mac[2], current_mac[1], current_mac[0],
                                           current_cmd_id, current_cmd, avg_rssi, count, wait_us/1000);
-                                 
                                  // Visual ACK: Flash RED led instantly for PLAY
                                  if (current_cmd == 0x01 && current_prep_time > 0) {
                                      Player::getInstance().test(255, 0, 0);
