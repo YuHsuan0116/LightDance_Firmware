@@ -121,34 +121,39 @@ The receiver parses the `AD Type = 0xFF` (Manufacturer Specific Data) section wi
 
 | Offset | Length | Description | Notes |
 | --- | --- | --- | --- |
-| 0 | 3 | **Manufacturer ID** | Little Endian, must match Config |
-| 3 | 2 |  **unique code (LD)** | `0x4C, 0x44` |
-| 5 | 1 | **CMD Info** | High 4-bit: `CMD_ID` (Identifier), Low 4-bit: `CMD_TYPE` (Action Type) |
-| 6 | 8 | **Target Mask** | 64-bit Mask, corresponds to `my_player_id` |
-| 14 | 4 | **Delay** | Big Endian, execution delay (us) |
+| 0 | 3 | **UUID** | `0x16 0x4C 0x44` |
+| 3 | 1 | **CMD Info** | High 4-bit: `CMD_ID` (Identifier), Low 4-bit: `CMD_TYPE` (Action Type) |
+| 4 | 8 | **Target Mask** | 64-bit Mask, corresponds to `my_player_id` |
+| 12 | 4 | **Delay** | Big Endian, execution delay (us) |
 
 The remaining bytes: 
 * `PLAY`
 
 | Offset | Length | Value | Description |
 | --- | --- | --- | --- |
-| **18** | 4 | `prep_led_us` | Preparation Time (Big Endian) |
+| **16** | 4 | `prep_led_us` | Preparation Time (Big Endian) |
 
 * `TEST`
 
 | Offset | Length | Value | Description |
 | --- | --- | --- | --- |
-| **18** | 3 | `data[3]` | RGB |
-| **21** | 1 | `0` | padding |
+| **16** | 3 | `data[3]` | RGB |
+| **19** | 1 | `0` | padding |
 
 * `CANCEL`
 
 | Offset | Length | Value | Description |
 | --- | --- | --- | --- |
-| **18** | 1 | `cmd_id` | the cmd id that you want to cancel |
-| **19** | 3 | `0` | padding |
+| **16** | 1 | `cmd_id` | the cmd id that you want to cancel |
+| **17** | 3 | `0` | padding |
 
-**Total Length**: 22 Bytes.
+* Other command
+
+| Offset | Length | Value | Description |
+| --- | --- | --- | --- |
+| **16** | 4 | `0` | padding |
+
+**Total Length**: 20 Bytes.
 
 ### 2. Transmitted ACK Packet (To Sender)
 
