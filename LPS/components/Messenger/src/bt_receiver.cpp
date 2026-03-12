@@ -271,10 +271,14 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
             uint8_t ad_len = adv_data[offset++];
             if(ad_len == 0) break;
             uint8_t ad_type = adv_data[offset++];
-            if(ad_type == 0xFF && ad_len == 22) {
-                if(adv_data[offset] == 0xFF && adv_data[offset + 1] == 0xFF && adv_data[offset+2] == 0x4C && adv_data[offset + 3] == 0x44) {
+            bool is_valid_format = false;
+            if (ad_type == 0x16 && ad_len == 20) {
+                is_valid_format = true;
+            }
+            if(is_valid_format) {
+                if(adv_data[offset] == 0x4C && adv_data[offset + 1] == 0x44) {
                     uint64_t rcv_mask = 0;
-                    for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 5 + k] << (k * 8));
+                    for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 3 + k] << (k * 8));
 
                     bool is_target = false;
                     if (rcv_mask == 0xFFFFFFFFFFFFFFFFULL) {
@@ -286,13 +290,13 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
                         }
                     }
                     if(is_target) {
-                        uint8_t rcv_cmd_id = (adv_data[offset + 4] >> 4) & 0x0F;
-                        uint8_t rcv_cmd = adv_data[offset + 4] & 0x0F;
-                        uint32_t rcv_delay_ms = (adv_data[offset + 13] << 24) | (adv_data[offset + 14] << 16) | (adv_data[offset + 15] << 8) | (adv_data[offset + 16]);
+                        uint8_t rcv_cmd_id = (adv_data[offset + 2] >> 4) & 0x0F;
+                        uint8_t rcv_cmd = adv_data[offset + 2] & 0x0F;
+                        uint32_t rcv_delay_ms = (adv_data[offset + 11] << 24) | (adv_data[offset + 12] << 16) | (adv_data[offset + 13] << 8) | (adv_data[offset + 14]);
                         uint32_t rcv_prep_ms = 0;
                         uint8_t rcv_data[3] = {0, 0, 0};
                         
-                        int spec_idx = offset + 17;
+                        int spec_idx = offset + 15;
                         if (rcv_cmd == 0x01) { 
                             rcv_prep_ms = (adv_data[spec_idx] << 24) | (adv_data[spec_idx + 1] << 16) | (adv_data[spec_idx + 2] << 8) | adv_data[spec_idx + 3];
                         } else if (rcv_cmd == 0x05) { 
@@ -321,6 +325,56 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
                     }
                 }
             }
+            // else if(ad_type == 0x16 && ad_len == 22){
+            //     if(adv_data[offset] == 0x4C && adv_data[offset + 1] == 0x44) {
+            //         uint64_t rcv_mask = 0;
+            //         for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 3 + k] << (k * 8));
+
+            //         bool is_target = false;
+            //         if (rcv_mask == 0xFFFFFFFFFFFFFFFFULL) {
+            //             is_target = true; 
+            //         }
+            //         else{
+            //             if ((rcv_mask >> s_config.my_player_id) & 1ULL) {
+            //                 is_target = true;
+            //             }
+            //         }
+            //         if(is_target) {
+            //             uint8_t rcv_cmd_id = (adv_data[offset + 2] >> 4) & 0x0F;
+            //             uint8_t rcv_cmd = adv_data[offset + 2] & 0x0F;
+            //             uint32_t rcv_delay_ms = (adv_data[offset + 11] << 24) | (adv_data[offset + 12] << 16) | (adv_data[offset + 13] << 8) | (adv_data[offset + 14]);
+            //             uint32_t rcv_prep_ms = 0;
+            //             uint8_t rcv_data[3] = {0, 0, 0};
+                        
+            //             int spec_idx = offset + 15;
+            //             if (rcv_cmd == 0x01) { 
+            //                 rcv_prep_ms = (adv_data[spec_idx] << 24) | (adv_data[spec_idx + 1] << 16) | (adv_data[spec_idx + 2] << 8) | adv_data[spec_idx + 3];
+            //             } else if (rcv_cmd == 0x05) { 
+            //                 rcv_data[0] = adv_data[spec_idx];
+            //                 rcv_data[1] = adv_data[spec_idx + 1];
+            //                 rcv_data[2] = adv_data[spec_idx + 2];
+            //             } else if (rcv_cmd == 0x06) { 
+            //                 rcv_data[0] = adv_data[spec_idx];
+            //             }
+            //             ble_rx_packet_t pkt;
+            //             pkt.cmd_id = rcv_cmd_id;
+            //             pkt.cmd_type = rcv_cmd;
+            //             pkt.target_mask = rcv_mask;
+            //             pkt.delay_val = rcv_delay_ms * 1000ULL;
+            //             pkt.prep_time = rcv_prep_ms * 1000ULL;
+            //             pkt.data[0] = rcv_data[0];
+            //             pkt.data[1] = rcv_data[1];
+            //             pkt.data[2] = rcv_data[2];
+            //             pkt.rssi = rssi;
+            //             pkt.rx_time_us = now_us;
+            //             memcpy(pkt.mac, mac, 6);
+            //             BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            //             xQueueSendFromISR(s_adv_queue, &pkt, &xHigherPriorityTaskWoken);
+            //             if(xHigherPriorityTaskWoken) portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            //             return;
+            //         }
+            //     }
+            // }
             offset += (ad_len - 1);
         }
         payload += (10 + data_len + 1);
