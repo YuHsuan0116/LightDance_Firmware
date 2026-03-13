@@ -19,6 +19,7 @@
 #include "sd_writer.h"  
 #include "bt_receiver.h"
 #include "readframe.h"
+#include "sd_mount.h"
 
 static const char *TAG = "TCP_CLIENT";
 
