@@ -27,7 +27,8 @@
 #define HCIC_PARAM_SIZE_BLE_WRITE_SCAN_PARAM (7)
 #define HCIC_PARAM_SIZE_BLE_WRITE_SCAN_ENABLE (2)
 #define CMD_TYPE_ACK 0x07
-
+#define UUID1 -1 // change into real uuid
+#define UUID2 -1 // change into real uuid
 // Helper macros to write data into HCI buffer
 #define UINT16_TO_STREAM(p, u16)        \
     {                                   \
@@ -211,8 +212,8 @@ static void send_ack_task(void *arg) {
     raw_data[idx++] = 0xFF;
     raw_data[idx++] = 0xFF;
 
-    raw_data[idx++] = 0x4C; 
-    raw_data[idx++] = 0x44; 
+    raw_data[idx++] = UUID1; //change into real uuid
+    raw_data[idx++] = UUID2; //change into real uuid
     raw_data[idx++] = CMD_TYPE_ACK;
     
     raw_data[idx++] = params->my_id;
@@ -276,7 +277,7 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
                 is_valid_format = true;
             }
             if(is_valid_format) {
-                if(adv_data[offset] == 0x4C && adv_data[offset + 1] == 0x44) {
+                if(adv_data[offset] == UUID1 && adv_data[offset + 1] == UUID2) {
                     uint64_t rcv_mask = 0;
                     for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 3 + k] << (k * 8));
 
@@ -325,56 +326,6 @@ static void IRAM_ATTR fast_parse_and_trigger(uint8_t* data, uint16_t len) {
                     }
                 }
             }
-            // else if(ad_type == 0x16 && ad_len == 22){
-            //     if(adv_data[offset] == 0x4C && adv_data[offset + 1] == 0x44) {
-            //         uint64_t rcv_mask = 0;
-            //         for(int k = 0; k < 8; k++) rcv_mask |= ((uint64_t)adv_data[offset + 3 + k] << (k * 8));
-
-            //         bool is_target = false;
-            //         if (rcv_mask == 0xFFFFFFFFFFFFFFFFULL) {
-            //             is_target = true; 
-            //         }
-            //         else{
-            //             if ((rcv_mask >> s_config.my_player_id) & 1ULL) {
-            //                 is_target = true;
-            //             }
-            //         }
-            //         if(is_target) {
-            //             uint8_t rcv_cmd_id = (adv_data[offset + 2] >> 4) & 0x0F;
-            //             uint8_t rcv_cmd = adv_data[offset + 2] & 0x0F;
-            //             uint32_t rcv_delay_ms = (adv_data[offset + 11] << 24) | (adv_data[offset + 12] << 16) | (adv_data[offset + 13] << 8) | (adv_data[offset + 14]);
-            //             uint32_t rcv_prep_ms = 0;
-            //             uint8_t rcv_data[3] = {0, 0, 0};
-                        
-            //             int spec_idx = offset + 15;
-            //             if (rcv_cmd == 0x01) { 
-            //                 rcv_prep_ms = (adv_data[spec_idx] << 24) | (adv_data[spec_idx + 1] << 16) | (adv_data[spec_idx + 2] << 8) | adv_data[spec_idx + 3];
-            //             } else if (rcv_cmd == 0x05) { 
-            //                 rcv_data[0] = adv_data[spec_idx];
-            //                 rcv_data[1] = adv_data[spec_idx + 1];
-            //                 rcv_data[2] = adv_data[spec_idx + 2];
-            //             } else if (rcv_cmd == 0x06) { 
-            //                 rcv_data[0] = adv_data[spec_idx];
-            //             }
-            //             ble_rx_packet_t pkt;
-            //             pkt.cmd_id = rcv_cmd_id;
-            //             pkt.cmd_type = rcv_cmd;
-            //             pkt.target_mask = rcv_mask;
-            //             pkt.delay_val = rcv_delay_ms * 1000ULL;
-            //             pkt.prep_time = rcv_prep_ms * 1000ULL;
-            //             pkt.data[0] = rcv_data[0];
-            //             pkt.data[1] = rcv_data[1];
-            //             pkt.data[2] = rcv_data[2];
-            //             pkt.rssi = rssi;
-            //             pkt.rx_time_us = now_us;
-            //             memcpy(pkt.mac, mac, 6);
-            //             BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-            //             xQueueSendFromISR(s_adv_queue, &pkt, &xHigherPriorityTaskWoken);
-            //             if(xHigherPriorityTaskWoken) portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-            //             return;
-            //         }
-            //     }
-            // }
             offset += (ad_len - 1);
         }
         payload += (10 + data_len + 1);

@@ -121,7 +121,7 @@ The receiver parses the `AD Type = 0xFF` (Manufacturer Specific Data) section wi
 
 | Offset | Length | Description | Notes |
 | --- | --- | --- | --- |
-| 0 | 3 | **UUID** | `0x16 0x4C 0x44` |
+| 0 | 3 | **UUID** | UUID (remember to change it to real one) |
 | 3 | 1 | **CMD Info** | High 4-bit: `CMD_ID` (Identifier), Low 4-bit: `CMD_TYPE` (Action Type) |
 | 4 | 8 | **Target Mask** | 64-bit Mask, corresponds to `my_player_id` |
 | 12 | 4 | **Delay** | Big Endian, execution delay (us) |
