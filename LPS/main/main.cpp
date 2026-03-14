@@ -46,7 +46,7 @@ static void sys_cmd_task(void* arg) {
                     // Stop playback and turn LEDs green to indicate update mode
                     if(Player::getInstance().getState() != 1)
                         Player::getInstance().stop();
-                    Player::getInstance().test(0, 255, 0);
+                    Player::getInstance().test(0, 128, 0);
 
                     // Trigger the background TCP OTA update task
                     tcp_client_start_update_task();
@@ -65,10 +65,12 @@ static void sys_cmd_task(void* arg) {
                     ESP_LOGD("SYS_TASK", ">>> [RESET] Download Completed! Rebooting in 1s...");
                     Player::getInstance().stop();  // Turn off LEDs before reboot
                     vTaskDelay(pdMS_TO_TICKS(1000));
-                    ESP_LOGI("SYS_TASK", "System will reboot, start flushing logs...");
-                    vTaskDelay(pdMS_TO_TICKS(100));  // Give time for log to be written to buffer
-                    sd_log_flush();
-                    esp_restart();  // Reboot to apply new files and restore clean memory state
+                    // Reset after successful upload to apply new content
+                    {
+                        sys_cmd_t reset_cmd = RESET;
+                        xQueueSend(sys_cmd_queue, &reset_cmd, 0);
+                    }
+                    
                     break;
 
                 default:
@@ -100,20 +102,19 @@ static void app_task(void* arg) {
     err = sd_log_init();
     if(err == ESP_OK) {
         logger_inited = true;
-        ESP_LOGE(TAG, "SD Logger success");
+        ESP_LOGI(TAG, "SD Logger success");
     }
     else{
         logger_inited = false;
         ESP_LOGE(TAG, "SD Logger init failed: %s", esp_err_to_name(err));
     }
-    ESP_LOGI(TAG, "logger init success");
 #endif
 
-#if LD_CFG_ENABLE_SD
+#if LD_CFG_ENABLE_PT
     // 2. Initialize SD Card and frame reading system
     err = frame_system_init("0:/control.dat", "0:/frame.dat");
     ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(err));
-    ESP_LOGI(TAG, "HWM after frame_system_init=%u", uxTaskGetStackHighWaterMark(NULL));
+    ESP_LOGD(TAG, "HWM after frame_system_init=%u", uxTaskGetStackHighWaterMark(NULL));
 
     //vTaskDelay(pdMS_TO_TICKS(1000));
 
@@ -121,7 +122,7 @@ static void app_task(void* arg) {
         frame_inited = false;
         vTaskDelay(portMAX_DELAY); // Halt task if critical files are missing
         frame_sys_ready = false;
-        ESP_LOGE(TAG, "frame system init failed, halt");
+        ESP_LOGE(TAG, "frame system init failed");
     }
     else {
         frame_inited = true;
@@ -159,10 +160,8 @@ static void app_task(void* arg) {
 
     // Read assigned Player ID from SD card (fallback to 1 for testing)
     int player_id;
-#if LD_CFG_ENABLE_SD
+#if LD_CFG_ENABLE_PT
     player_id = get_sd_card_id();
-#else
-    player_id = 1;
 #endif
 
     if(player_id == 0)
