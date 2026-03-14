@@ -145,6 +145,16 @@ esp_err_t pca9955b_show(pca9955b_dev_t* pca9955b) {
         }
     }
 
+    uint8_t iref = 0;
+    ret = i2c_master_transmit_receive(pca9955b->i2c_dev_handle, PCA9955B_IREFALL_ADDR, 1, &iref, 1, LD_CFG_I2C_TIMEOUT_MS);
+    if(ret != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to read IREF register: %s", esp_err_to_name(ret));
+    } else if(iref != 0xFF) {
+        ESP_LOGW(TAG, "Unexpected IREF value: read=0x%02X, expected=0xFF", iref);
+    } else {
+        ESP_LOGD(TAG, "IREF register OK: 0x%02X", iref);
+    }
+
     // 3. Transmit Buffer (Burst Write)
     // Send 16 bytes: Command Byte (PWM0 + AI) + 15 Color Bytes
     ret = i2c_master_transmit(pca9955b->i2c_dev_handle,
