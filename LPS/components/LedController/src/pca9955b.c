@@ -146,7 +146,8 @@ esp_err_t pca9955b_show(pca9955b_dev_t* pca9955b) {
     }
 
     uint8_t iref = 0;
-    ret = i2c_master_transmit_receive(pca9955b->i2c_dev_handle, PCA9955B_IREFALL_ADDR, 1, &iref, 1, LD_CFG_I2C_TIMEOUT_MS);
+    uint8_t reg_addr = PCA9955B_IREFALL_ADDR;
+    ret = i2c_master_transmit_receive(pca9955b->i2c_dev_handle, &reg_addr, 1, &iref, 1, LD_CFG_I2C_TIMEOUT_MS);
     if(ret != ESP_OK) {
         ESP_LOGE(TAG, "Failed to read IREF register: %s", esp_err_to_name(ret));
     } else if(iref != 0xFF) {
