@@ -5,16 +5,18 @@
 #include "ff.h"
 #include "ld_board.h"  // global ch_info
 #include "readframe.h"
+#include "esp_err.h"
 
-/* ================= config ================= */
+#include "frame_errors.h"
 
 static const uint8_t EXPECTED_VERSION_MAJOR = 1;
 static const uint8_t EXPECTED_VERSION_MINOR = 2;
 
 #define FRAME_RAW_MAX_SIZE 8192
 #define CHECKSUM_SIZE 4  // uint8 (reserved)
+#define FRAME_DATA_OFFSET 2
 
-/* ================= static ================= */
+
 
 static const char* TAG = "frame_reader";
 
@@ -22,7 +24,6 @@ static FIL fp;
 static bool opened = false;
 static uint32_t g_frame_size = 0;
 
-/* ================= helpers ================= */
 
 static inline void checksum_add_u8(uint32_t* sum, uint8_t b) {
     *sum += (uint32_t)b;
@@ -36,7 +37,6 @@ esp_err_t frame_reader_init(const char* path) {
         return ESP_ERR_INVALID_ARG;
     }
 
-    /* -------- sanity: ch_info must be valid -------- */
 
     uint32_t of_cnt = 0;
     uint32_t led_cnt = 0;
@@ -53,7 +53,6 @@ esp_err_t frame_reader_init(const char* path) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    /* -------- open file -------- */
 
     FRESULT fr = f_open(&fp, path, FA_READ);
     if(fr != FR_OK) {
@@ -61,7 +60,6 @@ esp_err_t frame_reader_init(const char* path) {
         return ESP_ERR_NOT_FOUND;
     }
 
-    /* -------- check version -------- */
 
     uint8_t version_bytes[2];
     UINT br;
@@ -85,13 +83,13 @@ esp_err_t frame_reader_init(const char* path) {
     
     ESP_LOGI(TAG, "frame.dat version: %d.%d (OK)", major, minor);
 
-    /* -------- calculate frame size  -------- */
+    //framesize check
 
-    g_frame_size = 4 +             /* start_time */
-                   1 +             /* fade */
-                   (of_cnt * 3) +  /* OF GRB */
-                   (led_cnt * 3) + /* LED GRB */
-                   CHECKSUM_SIZE;  /* checksum */
+    g_frame_size = 4 +         
+                   1 +             
+                   (of_cnt * 3) +  
+                   (led_cnt * 3) + 
+                   CHECKSUM_SIZE;  
 
     if(g_frame_size > FRAME_RAW_MAX_SIZE) {
         ESP_LOGE(TAG, "frame_size %u exceeds max", (unsigned)g_frame_size);
@@ -119,39 +117,62 @@ esp_err_t frame_reader_reset(void) {
         ESP_LOGE(TAG, "frame_reader not opened");
         return ESP_ERR_INVALID_STATE;
     }
+    FRESULT fr = f_lseek(&fp, FRAME_DATA_OFFSET); // skip version header
 
-    if(f_lseek(&fp, 2) != FR_OK) //skip version header
+    if(fr != FR_OK){
+        ESP_LOGE(TAG, "f_lseek reset failed (fr=%d)", fr);
         return ESP_FAIL;
+    }
 
     return ESP_OK;
 }
 
-uint32_t frame_reader_frame_size(void) {
-    return g_frame_size;
+void set_status(frame_reader_status* st, esp_err_t err, FRESULT fr, UINT br){
+    if (!st) return;
+    st -> err = err;
+    st -> fr = fr;
+    st -> br = br;
 }
-
 /* ================= read one frame ================= */
 
-esp_err_t frame_reader_read(table_frame_t* out) {
+esp_err_t frame_reader_read(table_frame_t* out, frame_reader_status* st) {
     // if (memcmp(&ch_info, &ch_info_snapshot, sizeof(ch_info)) != 0) {
     // ESP_LOGE(TAG, "ch_info changed after init");
     // return ESP_FAIL;
     // }
     if(!opened){
+        set_status(st, ESP_ERR_INVALID_STATE, FR_INVALID_OBJECT, 0);
         ESP_LOGE(TAG, "frame_reader not opened");
         return ESP_ERR_INVALID_STATE;
     }
-    if(!out)
+    if(!out){
+        set_status(st, ESP_ERR_INVALID_ARG, FR_INVALID_PARAMETER, 0);
         return ESP_ERR_INVALID_ARG;
+    }
+        
 
     static uint8_t raw[FRAME_RAW_MAX_SIZE];
-    UINT br;
+    UINT br = 0;
 
     memset(out, 0, sizeof(*out));
 
     FRESULT fr = f_read(&fp, raw, g_frame_size, &br);
-    if(fr != FR_OK || br != g_frame_size) {
-        return ESP_ERR_NOT_FOUND;
+
+    if(fr != FR_OK) {
+    ESP_LOGE(TAG, "f_read failed (fr=%d br=%u)", fr, (unsigned)br);
+    set_status(st, ESP_FAIL, fr, br);
+    return ESP_FAIL;
+    }
+
+    if(br == 0) {
+    set_status(st, ESP_ERR_FRAME_EOF, FR_OK, br);
+    return ESP_ERR_FRAME_EOF;
+    }
+
+    if(br != g_frame_size) {
+    ESP_LOGE(TAG, "short read (br=%u expected=%u)", (unsigned)br, (unsigned)g_frame_size);
+    set_status(st, ESP_FAIL, fr, br);
+    return ESP_FAIL;
     }
 
     uint8_t* p = raw;
@@ -222,12 +243,13 @@ esp_err_t frame_reader_read(table_frame_t* out) {
 
     if(read_checksum != sum){
         ESP_LOGE(TAG, "checksum mismatch. read=%u calculate=%u", read_checksum, sum);
+        set_status(st, ESP_ERR_INVALID_CRC, FR_OK, br);
         return ESP_ERR_INVALID_CRC;
     }
 
-    /* -------- final guard -------- */
     if((uint32_t)(p - raw) != g_frame_size) {
         ESP_LOGE(TAG, "frame consume mismatch used=%u size=%u", (unsigned)(p - raw), (unsigned)g_frame_size);
+        set_status(st, ESP_FAIL, FR_OK, br);
         return ESP_FAIL;
     }
 

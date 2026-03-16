@@ -74,16 +74,17 @@ Initialize the pattern table reader system
 
 - Detail Error Code Reference
 
-|  Return type   |  Description |
-|  :---  | :---  |
-| ESP_ERR_INVALID_STATE  | System already initialized (inited = True) |
-| ESP_ERR_INVALID_ARG  | Invalid control_path or frame_path |
-| ESP_ERR_NOT_FOUND  | control.dat or frame.dat missing on SD card |
-| ESP_FAIL | Version mismatch or I/O error |
-| ESP_ERR_INVALID_RESPONSE | control.dat format error (invalid values) |
-| ESP_ERR_NO_MEM | Out of memory |
-| ESP_ERR_INVALID_SIZE | Calculated frame size exceeds FRAME_RAW_MAX_SIZE |
-| ESP_ERR_INVALID_CRC | Checksum mismatch in control.dat |
+| Return                   | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| ESP_ERR_INVALID_STATE    | System already initialized                       |
+| ESP_ERR_INVALID_ARG      | Invalid control_path or frame_path               |
+| ESP_ERR_NOT_FOUND        | control.dat or frame.dat missing on SD card      |
+| ESP_ERR_NO_MEM           | Memory allocation failed                         |
+| ESP_ERR_INVALID_SIZE     | Calculated frame size exceeds FRAME_RAW_MAX_SIZE |
+| ESP_ERR_INVALID_CRC      | control.dat checksum mismatch                    |
+| ESP_ERR_INVALID_RESPONSE | control.dat format error (invalid values)        |
+| ESP_FAIL                 | Version mismatch or I/O error                    |
+
 
 ---
 
@@ -104,14 +105,15 @@ Reading next frame data
 
 - Detail Error Code Reference
 
-|  Return type   |  Description |
-|  :---  | :---  |
-| ESP_ERR_INVALID_STATE  | Called in UNINIT or STOPPED state |
-| ESP_ERR_NOT_FOUND  | No more frames to read, system enters EOF state |
-| ESP_ERR_INVALID_SIZE | Frame file corrupted: incomplete frame read (expected size mismatch) |
-| ESP_ERR_INVALID_ARG  | Invalid playerbuffer or NULL |
-| ESP_ERR_INVALID_CRC  | Checksum mismatch in frame.dat |
-| ESP_FAIL | Reader task stopped or I/O error |
+| Return                | Description                                 |
+| --------------------- | ------------------------------------------- |
+| ESP_ERR_INVALID_STATE | Called before initialization                |
+| ESP_ERR_INVALID_ARG   | playerbuffer is NULL                        |
+| ESP_ERR_NOT_FOUND     | End of frame.dat reached                    |
+| ESP_ERR_INVALID_SIZE  | Frame read size mismatch (file corrupted)   |
+| ESP_ERR_INVALID_CRC   | Frame checksum mismatch                     |
+| ESP_FAIL              | Reader task stopped or unexpected I/O error |
+
 
 ---
 
