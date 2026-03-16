@@ -123,7 +123,6 @@ esp_err_t frame_system_init(const char* control_path, const char* frame_path) {
         return ESP_ERR_INVALID_STATE;
     }
 
-    /* ---------- 0. mount SD ---------- */
 
     /* ---------- 1. load control.dat -> ch_info ---------- */
     err = get_channel_info(control_path, &ch_info);
