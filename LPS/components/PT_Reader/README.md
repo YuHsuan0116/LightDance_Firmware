@@ -9,6 +9,7 @@ define variable
 static bool inited; 
 static bool running; 
 static bool eof_reached;
+statid bool has_error;
 ```
 
 The finite state machine of pattern table reader system:
@@ -16,32 +17,32 @@ The finite state machine of pattern table reader system:
 ```mermaid
 stateDiagram-v2
 direction TB
-    
-    UNINIT --> INITED: frame_system_init()
 
-    INITED --> ACTIVE: read_frame()
+UNINIT --> INITED: frame_system_init()
 
-    note right of INITED: frame_reset() remain in INITED
-    
-    note right of ACTIVE: read_frame() remain in ACTIVE
-    
-    ACTIVE --> EOF: read_frame() return EOF
+INITED --> ACTIVE: read_frame()
 
-    ACTIVE --> INITED: frame_reset()
+note right of INITED: frame_reset() remains in INITED
 
-    ACTIVE --> UNINIT: frame_system_deinit()
+note right of ACTIVE: read_frame() remains in ACTIVE
 
-    note right of EOF: read_frame() remain in EOF
-    
-    EOF --> INITED: frame_reset()
-    
-    EOF --> UNINIT: frame_system_deinit()
+ACTIVE --> EOF: read_frame() returns ESP_ERR_FRAME_EOF
 
-    INITED --> UNINIT: frame_system_deinit()
+ACTIVE --> ERROR: internal read error
 
-    STOPPED
+ERROR --> INITED: frame_reset()
 
-    note right of STOPPED: any error occur
+ERROR --> UNINIT: frame_system_deinit()
+
+ACTIVE --> INITED: frame_reset()
+
+ACTIVE --> UNINIT: frame_system_deinit()
+
+note right of EOF: read_frame() remains in EOF
+
+EOF --> INITED: frame_reset()
+
+EOF --> UNINIT: frame_system_deinit()
 ```
 
 Description of each state :
@@ -74,17 +75,18 @@ Initialize the pattern table reader system
 
 - Detail Error Code Reference
 
-| Return                   | Description                                      |
-| ------------------------ | ------------------------------------------------ |
-| ESP_ERR_INVALID_STATE    | System already initialized                       |
-| ESP_ERR_INVALID_ARG      | Invalid control_path or frame_path               |
-| ESP_ERR_NOT_FOUND        | control.dat or frame.dat missing on SD card      |
-| ESP_ERR_NO_MEM           | Memory allocation failed                         |
-| ESP_ERR_INVALID_SIZE     | Calculated frame size exceeds FRAME_RAW_MAX_SIZE |
-| ESP_ERR_INVALID_CRC      | control.dat checksum mismatch                    |
-| ESP_ERR_INVALID_RESPONSE | control.dat format error (invalid values)        |
-| ESP_FAIL                 | Version mismatch or I/O error                    |
-
+| Return type                | Description                                                            |
+| :------------------------- | :--------------------------------------------------------------------- |
+| `ESP_OK`                   | Initialization succeeded                                               |
+| `ESP_ERR_INVALID_STATE`    | System already initialized                                             |
+| `ESP_ERR_NOT_FOUND`        | SD card not found, `control.dat` not found, or `frame.dat` open failed |
+| `ESP_ERR_INVALID_ARG`      | Invalid input path                                                     |
+| `ESP_ERR_NO_MEM`           | Failed to create semaphores                                            |
+| `ESP_ERR_INVALID_RESPONSE` | `control.dat` format error                                             |
+| `ESP_ERR_INVALID_CRC`      | `control.dat` checksum mismatch                                        |
+| `ESP_ERR_NOT_SUPPORTED`    | `control.dat` version mismatch                                         |
+| `ESP_ERR_INVALID_SIZE`     | Calculated frame size exceeds `FRAME_RAW_MAX_SIZE`                     |
+| `ESP_FAIL`                 | Generic I/O or version read failure                                    |
 
 ---
 
@@ -105,14 +107,15 @@ Reading next frame data
 
 - Detail Error Code Reference
 
-| Return                | Description                                 |
-| --------------------- | ------------------------------------------- |
-| ESP_ERR_INVALID_STATE | Called before initialization                |
-| ESP_ERR_INVALID_ARG   | playerbuffer is NULL                        |
-| ESP_ERR_NOT_FOUND     | End of frame.dat reached                    |
-| ESP_ERR_INVALID_SIZE  | Frame read size mismatch (file corrupted)   |
-| ESP_ERR_INVALID_CRC   | Frame checksum mismatch                     |
-| ESP_FAIL              | Reader task stopped or unexpected I/O error |
+| Return type             | Description                                                                   |
+| :---------------------- | :---------------------------------------------------------------------------- |
+| `ESP_OK`                | Frame read successfully                                                       |
+| `ESP_ERR_INVALID_STATE` | System not initialized                                                        |
+| `ESP_ERR_INVALID_ARG`   | `playerbuffer == NULL`                                                        |
+| `ESP_ERR_TIMEOUT`       | Failed to wait for ready semaphore                                            |
+| `ESP_ERR_FRAME_EOF`     | End of `frame.dat` reached                                                    |
+| `ESP_ERR_INVALID_CRC`   | Frame checksum mismatch                                                       |
+| `ESP_FAIL`              | Generic frame read error, short read, consume mismatch, or FATFS read failure |
 
 
 ---
@@ -142,6 +145,13 @@ Leave and close the pattern table reader system, release resource
 | ACTIVE  | UNINIT | ESP_OK |
 | EOF  | UNINIT | ESP_OK |
 | STOPPED  | UNINIT | ESP_OK |
+
+
+| Return type             | Description            |
+| :---------------------- | :--------------------- |
+| `ESP_OK`                | Deinit succeeded       |
+| `ESP_ERR_INVALID_STATE` | System not initialized |
+
 
 ## 3. Other API
 
