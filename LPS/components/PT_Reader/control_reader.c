@@ -135,7 +135,7 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
 
     /* ===== verify checksum ===== */
     if(checksum_read != checksum_calc) {
-        ESP_LOGE(TAG, "checksum mismatch! read=%lu calculated=%lu", (unsigned long)checksum_read, (unsigned long)checksum_calc);
+        ESP_LOGE(TAG, "checksum mismatch, read=%lu calculated=%lu", (unsigned long)checksum_read, (unsigned long)checksum_calc);
         f_close(&fp);
         memset(out, 0, sizeof(*out));
         return ESP_ERR_INVALID_CRC;
