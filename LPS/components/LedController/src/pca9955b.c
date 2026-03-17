@@ -145,17 +145,6 @@ esp_err_t pca9955b_show(pca9955b_dev_t* pca9955b) {
         }
     }
 
-    uint8_t iref = 0;
-    uint8_t reg_addr = PCA9955B_IREFALL_ADDR;
-    ret = i2c_master_transmit_receive(pca9955b->i2c_dev_handle, &reg_addr, 1, &iref, 1, LD_CFG_I2C_TIMEOUT_MS);
-    if(ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to read IREF register: %s", esp_err_to_name(ret));
-    } else if(iref != 0xFF) {
-        ESP_LOGW(TAG, "Unexpected IREF value: read=0x%02X, expected=0xFF", iref);
-    } else {
-        ESP_LOGD(TAG, "IREF register OK: 0x%02X", iref);
-    }
-
     // 3. Transmit Buffer (Burst Write)
     // Send 16 bytes: Command Byte (PWM0 + AI) + 15 Color Bytes
     ret = i2c_master_transmit(pca9955b->i2c_dev_handle,
@@ -212,4 +201,34 @@ esp_err_t pca9955b_fill(pca9955b_dev_t* pca9955b, grb8_t color) {
     }
 
     return ESP_OK;
+}
+
+esp_err_t pca9955b_check_iref(pca9955b_dev_t* pca9955b) {
+    // 1. Input Validation
+    ESP_RETURN_ON_FALSE(pca9955b, ESP_ERR_INVALID_ARG, TAG, "Handle is NULL");
+
+    // 2. Attempt to read back the IREFALL register to verify it's set correctly.
+    uint8_t iref_reg_addr = 0x18 | PCA9955B_AUTO_INC;  // IREFALL register with auto-increment bit
+    uint8_t iref_value[15] = {0};
+
+    esp_err_t ret = i2c_master_transmit_receive(pca9955b->i2c_dev_handle, &iref_reg_addr, 1, iref_value, sizeof(iref_value), LD_CFG_I2C_TIMEOUT_MS);
+
+    bool good = true;
+    for(int i=0; i<15; i++){
+        if(iref_value[i] != 0xff) {
+            good = false;
+            break;
+        }
+    }
+    
+    if(good) {
+        return ESP_OK;
+    }
+
+
+    for(int i=0; i<15; i++){
+        ESP_LOGW(TAG, "IREF[%d] = 0x%02x (expected 0xff)", i, iref_value[i]);
+    }
+    return ESP_ERR_INVALID_STATE;
+
 }
