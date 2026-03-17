@@ -30,6 +30,64 @@ static bool sd_mounted = false;
 static bool logger_inited = false;
 static bool frame_inited = false;
 
+static void print_restart_reason() {
+    esp_reset_reason_t reason = esp_reset_reason();
+
+    switch(reason) {
+        case ESP_RST_UNKNOWN:
+            ESP_LOGW(TAG, "Reset reason: UNKNOWN");
+            break;
+        case ESP_RST_POWERON:
+            ESP_LOGI(TAG, "Reset reason: POWERON");
+            break;
+        case ESP_RST_EXT:
+            ESP_LOGI(TAG, "Reset reason: EXT");
+            break;
+        case ESP_RST_SW:
+            ESP_LOGW(TAG, "Reset reason: SW");
+            break;
+        case ESP_RST_PANIC:
+            ESP_LOGE(TAG, "Reset reason: PANIC");
+            break;
+        case ESP_RST_INT_WDT:
+            ESP_LOGE(TAG, "Reset reason: INT_WDT");
+            break;
+        case ESP_RST_TASK_WDT:
+            ESP_LOGE(TAG, "Reset reason: TASK_WDT");
+            break;
+        case ESP_RST_WDT:
+            ESP_LOGE(TAG, "Reset reason: WDT");
+            break;
+        case ESP_RST_DEEPSLEEP:
+            ESP_LOGI(TAG, "Reset reason: DEEPSLEEP");
+            break;
+        case ESP_RST_BROWNOUT:
+            ESP_LOGE(TAG, "Reset reason: BROWNOUT");
+            break;
+        case ESP_RST_SDIO:
+            ESP_LOGW(TAG, "Reset reason: SDIO");
+            break;
+        case ESP_RST_USB:
+            ESP_LOGW(TAG, "Reset reason: USB");
+            break;
+        case ESP_RST_JTAG:
+            ESP_LOGW(TAG, "Reset reason: JTAG");
+            break;
+        case ESP_RST_EFUSE:
+            ESP_LOGE(TAG, "Reset reason: EFUSE");
+            break;
+        case ESP_RST_PWR_GLITCH:
+            ESP_LOGE(TAG, "Reset reason: PWR_GLITCH");
+            break;
+        case ESP_RST_CPU_LOCKUP:
+            ESP_LOGE(TAG, "Reset reason: CPU_LOCKUP");
+            break;
+        default:
+            ESP_LOGW(TAG, "Reset reason: %d", reason);
+            break;
+    }
+}
+
 /* * Background task to handle system-level commands asynchronously.
  * Receives messages from BLE receiver or TCP client.
  */
@@ -133,24 +191,7 @@ static void app_task(void* arg) {
 
 #endif
 
-    esp_reset_reason_t reason = esp_reset_reason();
-
-    switch(reason) {
-        case ESP_RST_POWERON:
-            ESP_LOGI(TAG, "Power on reset");
-            break;
-        case ESP_RST_PANIC:
-            ESP_LOGE(TAG, "System panic reset");
-            break;
-        case ESP_RST_TASK_WDT:
-            ESP_LOGE(TAG, "Task watchdog reset");
-            break;
-        case ESP_RST_BROWNOUT:
-            ESP_LOGE(TAG, "Brownout reset");
-            break;
-        default:
-            ESP_LOGW(TAG, "Reset reason: %d", reason);
-    }
+    print_restart_reason();
 
     // 3. Pre-calculate Gamma Lookup Table for LED color correction
     calc_gamma_lut();
