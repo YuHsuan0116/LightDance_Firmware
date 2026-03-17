@@ -74,9 +74,6 @@ static int ring_buffer_write(const char* fmt, va_list args) {
         g_buf->head = next;
     }
     
-    // flush to ensure every log is written to SD in time
-    flush_buffer();
-    
     xSemaphoreGive(g_buf->mutex);
     return len;
 }
