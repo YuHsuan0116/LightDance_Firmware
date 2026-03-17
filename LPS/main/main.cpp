@@ -14,7 +14,7 @@
 #include "player.hpp"
 #include "readframe.h"
 #include "sd_logger.h"
-#include "sd_mount.h"
+#include "sd_utils.h"
 #include "tcp_client.h"
 
 #include <stdio.h>
@@ -151,7 +151,7 @@ static void app_task(void* arg) {
 
     // 6. Create System Command Queue and spawn its handler task
     sys_cmd_queue = xQueueCreate(10, sizeof(sys_cmd_t));
-    sd_log_flush();
+    //sd_log_flush();
     if(sys_cmd_queue != NULL) {
         xTaskCreate(sys_cmd_task, "sys_cmd_task", 4096, NULL, 5, NULL);
     } else {

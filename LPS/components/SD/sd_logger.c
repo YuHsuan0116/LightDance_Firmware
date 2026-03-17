@@ -19,6 +19,7 @@ typedef struct {
     SemaphoreHandle_t mutex;
     FILE* file;
     bool running;
+    TaskHandle_t task;
 } ring_buffer_t;
 
 static ring_buffer_t* g_buf = NULL;
@@ -53,13 +54,13 @@ static int ring_buffer_write(const char* fmt, va_list args) {
     
     xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
     
-    uint32_t free_space;
-    if (g_buf->head >= g_buf->tail) {
-        free_space = BUFFER_SIZE - (g_buf->head - g_buf->tail) - 1;
-    }
-    else {
-        free_space = g_buf->tail - g_buf->head - 1;
-    }
+    // uint32_t free_space;
+    // if (g_buf->head >= g_buf->tail) {
+    //     free_space = BUFFER_SIZE - (g_buf->head - g_buf->tail) - 1;
+    // }
+    // else {
+    //     free_space = g_buf->tail - g_buf->head - 1;
+    // }
     
     // // buffer not enough -> flush
     // if (free_space < (uint32_t)len) {
@@ -73,11 +74,19 @@ static int ring_buffer_write(const char* fmt, va_list args) {
         g_buf->head = next;
     }
     
-    // flush to ensure every log is written to SD in time
-    flush_buffer();
-    
     xSemaphoreGive(g_buf->mutex);
     return len;
+}
+
+static void flush_task(void* arg) {
+    while (g_buf->running) {
+        xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
+        flush_buffer();
+        xSemaphoreGive(g_buf->mutex);
+        
+        vTaskDelay(50);
+    }
+    vTaskDelete(NULL);
 }
 
 esp_err_t sd_log_init() {
@@ -113,6 +122,7 @@ esp_err_t sd_log_init() {
     fflush(g_buf->file);
     g_buf->running = true;
     
+    xTaskCreate(flush_task, "sd_logger_flush", 2048, NULL, 1, &g_buf->task);
     orig_vprintf = esp_log_set_vprintf(ring_buffer_write);
 
     vTaskDelay(pdMS_TO_TICKS(100));
@@ -123,7 +133,8 @@ esp_err_t sd_log_deinit(void) {
     if (!g_buf) return ESP_ERR_INVALID_STATE;
     
     g_buf->running = false;
-    
+    vTaskDelay(pdMS_TO_TICKS(50));
+
     if (g_buf->file) {
         xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
         flush_buffer();
