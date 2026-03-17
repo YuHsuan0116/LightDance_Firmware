@@ -70,7 +70,7 @@ static void sys_cmd_task(void* arg) {
                         sys_cmd_t reset_cmd = RESET;
                         xQueueSend(sys_cmd_queue, &reset_cmd, 0);
                     }
-                    
+
                     break;
 
                 default:
@@ -86,16 +86,17 @@ static void sys_cmd_task(void* arg) {
 static void app_task(void* arg) {
     ESP_LOGI(TAG, "app_task start, HWM=%u", uxTaskGetStackHighWaterMark(NULL));
 
-    // 0. Mount SD Card 
+    // 0. Mount SD Card
     esp_err_t err = mount_sdcard();
-    if (err == ESP_OK) {
+    if(err == ESP_OK) {
         sd_mounted = true;
         ESP_LOGI(TAG, "SD card mount success");
-    }
-    else {
+    } else {
         sd_mounted = false;
         ESP_LOGE(TAG, "SD card mount failed: %s", esp_err_to_name(err));
     }
+
+    vTaskDelay(pdMS_TO_TICKS(100));
 
 #if LD_CFG_ENABLE_LOGGER
     // 1. Initialize SD Logger (Optional)
@@ -103,11 +104,13 @@ static void app_task(void* arg) {
     if(err == ESP_OK) {
         logger_inited = true;
         ESP_LOGI(TAG, "SD Logger success");
-    }
-    else{
+    } else {
         logger_inited = false;
         ESP_LOGE(TAG, "SD Logger init failed: %s", esp_err_to_name(err));
     }
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
 #endif
 
 #if LD_CFG_ENABLE_PT
@@ -116,18 +119,18 @@ static void app_task(void* arg) {
     ESP_LOGI(TAG, "frame_system_init=%s", esp_err_to_name(err));
     ESP_LOGD(TAG, "HWM after frame_system_init=%u", uxTaskGetStackHighWaterMark(NULL));
 
-    //vTaskDelay(pdMS_TO_TICKS(1000));
-
     if(err != ESP_OK) {
         frame_inited = false;
-        vTaskDelay(portMAX_DELAY); // Halt task if critical files are missing
+        // vTaskDelay(portMAX_DELAY);  // Halt task if critical files are missing
         frame_sys_ready = false;
         ESP_LOGE(TAG, "frame system init failed");
-    }
-    else {
+    } else {
         frame_inited = true;
         frame_sys_ready = true;
     }
+
+    vTaskDelay(pdMS_TO_TICKS(100));
+
 #endif
 
     // 3. Pre-calculate Gamma Lookup Table for LED color correction
@@ -143,7 +146,8 @@ static void app_task(void* arg) {
 
     // 5. Initialize the core Player state machine
     Player::getInstance().init();
-    vTaskDelay(pdMS_TO_TICKS(1000));
+
+    vTaskDelay(pdMS_TO_TICKS(100));
 
     // 6. Create System Command Queue and spawn its handler task
     sys_cmd_queue = xQueueCreate(10, sizeof(sys_cmd_t));
@@ -177,10 +181,17 @@ static void app_task(void* arg) {
     };
     bt_receiver_init(&rx_cfg);
     bt_receiver_start();
+
+    vTaskDelay(pdMS_TO_TICKS(100));
 #else
     // Fallback to console testing if BT is disabled
     console_test();
 #endif
+
+    // Indicate the initialization is completed.
+    Player::getInstance().test(0, 0, 128);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    Player::getInstance().stop();
 
     // Initialization complete, delete setup task to free memory
     vTaskDelete(NULL);
