@@ -32,59 +32,109 @@ static bool frame_inited = false;
 
 static void print_restart_reason() {
     esp_reset_reason_t reason = esp_reset_reason();
+    const char* reason_name = "UNKNOWN";
+    const char* reason_desc = "Reset reason is not recognized.";
+    bool is_error = false;
+    bool is_warning = false;
 
     switch(reason) {
         case ESP_RST_UNKNOWN:
-            ESP_LOGW(TAG, "Reset reason: UNKNOWN");
+            reason_name = "UNKNOWN";
+            reason_desc = "Reset reason could not be determined.";
+            is_warning = true;
             break;
         case ESP_RST_POWERON:
-            ESP_LOGI(TAG, "Reset reason: POWERON");
+            reason_name = "POWERON";
+            reason_desc = "Normal power-on reset.";
             break;
         case ESP_RST_EXT:
-            ESP_LOGI(TAG, "Reset reason: EXT");
+            reason_name = "EXT";
+            reason_desc = "External reset signal triggered reboot.";
             break;
         case ESP_RST_SW:
-            ESP_LOGW(TAG, "Reset reason: SW");
+            reason_name = "SW";
+            reason_desc = "Software requested a restart.";
+            is_warning = true;
             break;
         case ESP_RST_PANIC:
-            ESP_LOGE(TAG, "Reset reason: PANIC");
+            reason_name = "PANIC";
+            reason_desc = "System rebooted after a fatal exception.";
+            is_error = true;
             break;
         case ESP_RST_INT_WDT:
-            ESP_LOGE(TAG, "Reset reason: INT_WDT");
+            reason_name = "INT_WDT";
+            reason_desc = "Interrupt watchdog timeout.";
+            is_error = true;
             break;
         case ESP_RST_TASK_WDT:
-            ESP_LOGE(TAG, "Reset reason: TASK_WDT");
+            reason_name = "TASK_WDT";
+            reason_desc = "Task watchdog timeout.";
+            is_error = true;
             break;
         case ESP_RST_WDT:
-            ESP_LOGE(TAG, "Reset reason: WDT");
+            reason_name = "WDT";
+            reason_desc = "Other watchdog triggered a reset.";
+            is_error = true;
             break;
         case ESP_RST_DEEPSLEEP:
-            ESP_LOGI(TAG, "Reset reason: DEEPSLEEP");
+            reason_name = "DEEPSLEEP";
+            reason_desc = "Wake-up from deep sleep.";
             break;
         case ESP_RST_BROWNOUT:
-            ESP_LOGE(TAG, "Reset reason: BROWNOUT");
+            reason_name = "BROWNOUT";
+            reason_desc = "Power supply voltage dropped too low.";
+            is_error = true;
             break;
         case ESP_RST_SDIO:
-            ESP_LOGW(TAG, "Reset reason: SDIO");
+            reason_name = "SDIO";
+            reason_desc = "Reset triggered by SDIO subsystem.";
+            is_warning = true;
             break;
         case ESP_RST_USB:
-            ESP_LOGW(TAG, "Reset reason: USB");
+            reason_name = "USB";
+            reason_desc = "Reset triggered by USB subsystem.";
+            is_warning = true;
             break;
         case ESP_RST_JTAG:
-            ESP_LOGW(TAG, "Reset reason: JTAG");
+            reason_name = "JTAG";
+            reason_desc = "Reset triggered via JTAG.";
+            is_warning = true;
             break;
         case ESP_RST_EFUSE:
-            ESP_LOGE(TAG, "Reset reason: EFUSE");
+            reason_name = "EFUSE";
+            reason_desc = "eFuse related reset.";
+            is_error = true;
             break;
         case ESP_RST_PWR_GLITCH:
-            ESP_LOGE(TAG, "Reset reason: PWR_GLITCH");
+            reason_name = "PWR_GLITCH";
+            reason_desc = "Power glitch detected.";
+            is_error = true;
             break;
         case ESP_RST_CPU_LOCKUP:
-            ESP_LOGE(TAG, "Reset reason: CPU_LOCKUP");
+            reason_name = "CPU_LOCKUP";
+            reason_desc = "CPU lockup detected.";
+            is_error = true;
             break;
         default:
-            ESP_LOGW(TAG, "Reset reason: %d", reason);
+            is_warning = true;
             break;
+    }
+
+    if(is_error) {
+        ESP_LOGE(TAG, "================ RESET REASON ================");
+        ESP_LOGE(TAG, " reason : %s (%d)", reason_name, reason);
+        ESP_LOGE(TAG, " detail : %s", reason_desc);
+        ESP_LOGE(TAG, "==============================================");
+    } else if(is_warning) {
+        ESP_LOGW(TAG, "================ RESET REASON ================");
+        ESP_LOGW(TAG, " reason : %s (%d)", reason_name, reason);
+        ESP_LOGW(TAG, " detail : %s", reason_desc);
+        ESP_LOGW(TAG, "==============================================");
+    } else {
+        ESP_LOGI(TAG, "================ RESET REASON ================");
+        ESP_LOGI(TAG, " reason : %s (%d)", reason_name, reason);
+        ESP_LOGI(TAG, " detail : %s", reason_desc);
+        ESP_LOGI(TAG, "==============================================");
     }
 }
 
