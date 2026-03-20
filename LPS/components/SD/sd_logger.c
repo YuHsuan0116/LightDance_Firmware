@@ -48,6 +48,16 @@ static void flush_buffer(void) {
     }
 }
 
+static bool immediate_log(const char* fmt) {
+    if (!fmt) return
+        false;
+
+    char first_char = fmt[0];
+    if(first_char == 'E' || first_char == 'W')
+        return true;
+    return false;
+}
+
 static int ring_buffer_write(const char* fmt, va_list args) {
     if (!g_buf || !g_buf->running) return 0;
 
