@@ -25,6 +25,10 @@ static int cmd_play(int argc, char** argv) {
 }
 
 static int cmd_seek(int argc, char** argv) {
+    if(argc != 2) {
+        printf("Usage: seek <time_us>\n");
+        return 1;
+    }
     uint32_t time = atoi(argv[1]);
     Player::getInstance().seek(time);
     return 0;
