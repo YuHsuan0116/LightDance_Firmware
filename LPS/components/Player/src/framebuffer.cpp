@@ -134,7 +134,6 @@ FbComputeStatus FrameBuffer::compute(uint64_t time_ms) {
     if(status == FbComputeStatus::ERROR_GENERAL || status == FbComputeStatus::ERROR_CRITICAL) {
         return status;
     }
-
     if(status == FbComputeStatus::OK) {
         uint8_t p = (current->fade) ? calc_lerp_p(time_ms, current->timestamp, next->timestamp) : 0;
 
@@ -204,7 +203,7 @@ FbComputeStatus FrameBuffer::handle_frames(uint64_t time_ms) {
         if(err == ESP_FAIL) {
             ESP_LOGE(TAG, "read_frame failed: %s", esp_err_to_name(err));
             buffer = current->data;
-            return FbComputeStatus::ERROR_GENERAL;
+            return FbComputeStatus::ERROR_CRITICAL;
         }
         if(err == ESP_ERR_INVALID_STATE) {
             ESP_LOGE(TAG, "read_frame failed: %s", esp_err_to_name(err));

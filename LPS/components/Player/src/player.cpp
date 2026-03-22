@@ -1,7 +1,10 @@
 ﻿#include "player.hpp"
+#include "bt_receiver.h"
 
 #include "esp_check.h"
 #include "esp_log.h"
+
+#include "freertos/queue.h"
 
 static const char* TAG = "Player";
 
@@ -138,11 +141,11 @@ esp_err_t Player::updatePlayback() {
         e.type = EVENT_STOP;
         ESP_RETURN_ON_ERROR(sendEvent(e), TAG, "stop event on framebuffer error");
         // return ESP_FAIL;
-    } else if(fb_status == FbComputeStatus::ERROR_CRITICAL) {
-        ESP_LOGE(TAG, "framebuffer compute critical error");
-        Event e{};
-        e.type = EVENT_RELEASE;
-        ESP_RETURN_ON_ERROR(sendEvent(e), TAG, "release event on framebuffer critical error");
+    }
+    else if(fb_status == FbComputeStatus::ERROR_CRITICAL) {
+        ESP_LOGE(TAG, "framebuffer compute critical error, restarting...");
+        vTaskDelay(pdMS_TO_TICKS(1000));
+        esp_restart();
     }
 
     frame_data* buf = fb.get_buffer();
@@ -174,6 +177,7 @@ esp_err_t Player::testPlayback(TestData data) {
 
     return ESP_OK;
 }
+
 
 /* ================= RTOS ================= */
 

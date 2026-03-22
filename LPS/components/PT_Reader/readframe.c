@@ -85,6 +85,12 @@ static void pt_reader_task(void* arg) {
             xSemaphoreGive(sem_ready);
             continue;
         }
+        if(err == ESP_FAIL) {
+            ESP_LOGE(TAG, "I/O error while reading frame");
+            xSemaphoreGive(sem_ready);
+            running = false;    // stop the task loop
+            continue;
+         }
 
         if(err != ESP_OK) {
             ESP_LOGE(TAG, "frame_reader_read failed: %s", esp_err_to_name(err));
@@ -171,6 +177,10 @@ esp_err_t read_frame(table_frame_t* playerbuffer) {
 
     if (xSemaphoreTake(sem_ready, portMAX_DELAY) != pdTRUE) {
         ESP_LOGE(TAG, "Failed to take sem_ready");
+        return ESP_FAIL;
+    }
+    if(!running){
+        ESP_LOGE(TAG, "frame system not running");
         return ESP_FAIL;
     }
 
