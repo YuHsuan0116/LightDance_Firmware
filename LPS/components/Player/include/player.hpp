@@ -45,6 +45,7 @@ class Player {
     esp_err_t resetPlayback();
     esp_err_t updatePlayback();
     esp_err_t testPlayback(TestData);
+    esp_err_t exitPlayback();
 
     // ===== FSM =====
 
