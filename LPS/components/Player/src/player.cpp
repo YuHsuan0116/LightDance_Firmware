@@ -144,7 +144,6 @@ esp_err_t Player::updatePlayback() {
     }
     else if(fb_status == FbComputeStatus::ERROR_CRITICAL) {
         ESP_LOGE(TAG, "framebuffer compute critical error, restarting...");
-        vTaskDelay(pdMS_TO_TICKS(1000));
         esp_restart();
     }
 

@@ -12,6 +12,7 @@
 
 #define BUFFER_SIZE (4*1024)      // ring buffer size
 #define TEMP_BUFFER_SIZE 256         //single logger size
+#define MUTEX_WAIT_TICKS pdMS_TO_TICKS(1)
 static const char* TAG = "LOGGER";
 
 typedef struct {
@@ -50,30 +51,37 @@ static void flush_buffer(void) {
 static int ring_buffer_write(const char* fmt, va_list args) {
     if (!g_buf || !g_buf->running) return 0;
     
-    char temp[TEMP_BUFFER_SIZE];
-    int len = vsnprintf(temp, sizeof(temp), fmt, args);
-    if (len <= 0) return 0;
-    
-    xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
-    
-    // uint32_t free_space;
-    // if (g_buf->head >= g_buf->tail) {
-    //     free_space = BUFFER_SIZE - (g_buf->head - g_buf->tail) - 1;
-    // }
-    // else {
-    //     free_space = g_buf->tail - g_buf->head - 1;
-    // }
-    
-    // // buffer not enough -> flush
-    // if (free_space < (uint32_t)len) {
-    //     flush_buffer();
-    // }
-    
-    // write new data
-    for (int i = 0; i < len; i++) {
-        uint32_t next = (g_buf->head + 1) % BUFFER_SIZE;
-        g_buf->data[g_buf->head] = temp[i];
-        g_buf->head = next;
+    if (immediate_log(fmt)) {
+        // warning or error: direct flush into sd card
+        if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) != pdTRUE) {
+            return 0;
+        }
+        if (g_buf->file) {
+            vfprintf(g_buf->file, fmt, args);
+            fflush(g_buf->file);
+            fsync(fileno(g_buf->file));
+        }
+        xSemaphoreGive(g_buf->mutex);
+        return 0;
+    }
+    else {
+        // not warning or error: into ring buffer
+        char temp[TEMP_BUFFER_SIZE];
+        int len = vsnprintf(temp, sizeof(temp), fmt, args);
+        if (len <= 0) return 0;
+        
+        if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) != pdTRUE) {
+            return 0;
+        }
+        
+        for (int i = 0; i < len; i++) {
+            uint32_t next = (g_buf->head + 1) % BUFFER_SIZE;
+            g_buf->data[g_buf->head] = temp[i];
+            g_buf->head = next;
+        }
+
+        xSemaphoreGive(g_buf->mutex);
+        return len;
     }
     
     xSemaphoreGive(g_buf->mutex);
@@ -82,9 +90,10 @@ static int ring_buffer_write(const char* fmt, va_list args) {
 
 static void flush_task(void* arg) {
     while (g_buf->running) {
-        xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
-        flush_buffer();
-        xSemaphoreGive(g_buf->mutex);
+        if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) == pdTRUE) {
+            flush_buffer();
+            xSemaphoreGive(g_buf->mutex);
+        }
         
         vTaskDelay(50);
     }
@@ -140,9 +149,10 @@ esp_err_t sd_log_deinit(void) {
     vTaskDelay(pdMS_TO_TICKS(50));
 
     if (g_buf->file) {
-        xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
-        flush_buffer();
-        xSemaphoreGive(g_buf->mutex);
+        if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) == pdTRUE) {
+            flush_buffer();
+            xSemaphoreGive(g_buf->mutex);
+        }
         fclose(g_buf->file);
     }
     
@@ -158,7 +168,9 @@ esp_err_t sd_log_deinit(void) {
 esp_err_t sd_log_flush(void) {
     if (!g_buf || !g_buf->running) return ESP_ERR_INVALID_STATE;
     
-    xSemaphoreTake(g_buf->mutex, portMAX_DELAY);
+    if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) != pdTRUE) {
+        return ESP_ERR_TIMEOUT;
+    }
     flush_buffer();
     xSemaphoreGive(g_buf->mutex);
     
