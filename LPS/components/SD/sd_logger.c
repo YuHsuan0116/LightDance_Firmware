@@ -50,42 +50,25 @@ static void flush_buffer(void) {
 
 static int ring_buffer_write(const char* fmt, va_list args) {
     if (!g_buf || !g_buf->running) return 0;
+
+    // not warning or error: into ring buffer
+    char temp[TEMP_BUFFER_SIZE];
+    int len = vsnprintf(temp, sizeof(temp), fmt, args);
+    if (len <= 0) return 0;
     
-    if (immediate_log(fmt)) {
-        // warning or error: direct flush into sd card
-        if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) != pdTRUE) {
-            return 0;
-        }
-        if (g_buf->file) {
-            vfprintf(g_buf->file, fmt, args);
-            fflush(g_buf->file);
-            fsync(fileno(g_buf->file));
-        }
-        xSemaphoreGive(g_buf->mutex);
+    if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) != pdTRUE) {
         return 0;
     }
-    else {
-        // not warning or error: into ring buffer
-        char temp[TEMP_BUFFER_SIZE];
-        int len = vsnprintf(temp, sizeof(temp), fmt, args);
-        if (len <= 0) return 0;
-        
-        if (xSemaphoreTake(g_buf->mutex, MUTEX_WAIT_TICKS) != pdTRUE) {
-            return 0;
-        }
-        
-        for (int i = 0; i < len; i++) {
-            uint32_t next = (g_buf->head + 1) % BUFFER_SIZE;
-            g_buf->data[g_buf->head] = temp[i];
-            g_buf->head = next;
-        }
-
-        xSemaphoreGive(g_buf->mutex);
-        return len;
-    }
     
+    for (int i = 0; i < len; i++) {
+        uint32_t next = (g_buf->head + 1) % BUFFER_SIZE;
+        g_buf->data[g_buf->head] = temp[i];
+        g_buf->head = next;
+    }
+
     xSemaphoreGive(g_buf->mutex);
     return len;
+    
 }
 
 static void flush_task(void* arg) {
