@@ -12,6 +12,7 @@ static const uint8_t EXPECTED_VERSION_MINOR = 2;
 
 #define FRAME_RAW_MAX_SIZE 8192
 #define CHECKSUM_SIZE 4  // uint8 (reserved)          
+#define FRAME_FILE_HEADER_SIZE 2U
 
 /* ================= static ================= */
 
@@ -114,12 +115,17 @@ void frame_reader_deinit(void) {
 }
 
 esp_err_t frame_reader_reset(void) {
+    return frame_reader_seek(0);
+}
+
+esp_err_t frame_reader_seek(uint32_t frame_idx) {
     if(!opened){
         ESP_LOGE(TAG, "frame_reader not opened");
         return ESP_ERR_INVALID_STATE;
     }
 
-    if(f_lseek(&fp, 2) != FR_OK) //skip version header
+    FSIZE_t offset = (FSIZE_t)FRAME_FILE_HEADER_SIZE + ((FSIZE_t)frame_idx * (FSIZE_t)g_frame_size);
+    if(f_lseek(&fp, offset) != FR_OK)
         return ESP_FAIL;
 
     return ESP_OK;

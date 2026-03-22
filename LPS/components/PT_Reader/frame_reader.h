@@ -66,6 +66,7 @@ uint32_t frame_reader_frame_size(void);
 esp_err_t frame_reader_read(table_frame_t* out);
 
 esp_err_t frame_reader_reset(void);
+esp_err_t frame_reader_seek(uint32_t frame_idx);
 
 #ifdef __cplusplus
 }

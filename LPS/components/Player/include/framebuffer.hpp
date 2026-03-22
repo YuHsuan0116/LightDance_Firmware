@@ -33,6 +33,8 @@ class FrameBuffer {
     esp_err_t reset();
     esp_err_t deinit();
 
+    esp_err_t seek(uint64_t time_ms);
+
     FbComputeStatus compute(uint64_t time_ms);
 
     void set_test_mode(FbTestMode mode);

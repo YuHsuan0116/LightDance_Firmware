@@ -29,7 +29,7 @@ FrameBuffer::FrameBuffer() {
 FrameBuffer::~FrameBuffer() {}
 
 esp_err_t FrameBuffer::init() {
-    
+
     test_mode_ = FbTestMode::OFF;
     eof_reported_ = false;
 
@@ -85,6 +85,15 @@ esp_err_t FrameBuffer::reset() {
 }
 
 esp_err_t FrameBuffer::deinit() {
+    return ESP_OK;
+}
+
+esp_err_t FrameBuffer::seek(uint64_t time_ms) {
+    read_frame_seek(time_ms);
+
+    read_frame(current);
+    read_frame(next);
+
     return ESP_OK;
 }
 

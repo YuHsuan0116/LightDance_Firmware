@@ -1,5 +1,7 @@
 #include "control_reader.h"
 
+#include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
 #include "esp_log.h"
 #include "ff.h"
@@ -9,6 +11,10 @@ static const char* TAG = "control_reader";
 
 static const uint8_t EXPECTED_VERSION_MAJOR = 1;
 static const uint8_t EXPECTED_VERSION_MINOR = 2;
+
+static uint32_t* s_timestamps = NULL;
+static uint32_t s_frame_num = 0;
+static bool s_timeline_loaded = false;
 
 /* checksum helper */
 static inline void checksum_add_u8(uint32_t* sum, uint8_t b) {
@@ -37,6 +43,13 @@ static esp_err_t fr_to_err(FRESULT fr) {
     }
 }
 
+static void clear_cached_timestamps(void) {
+    free(s_timestamps);
+    s_timestamps = NULL;
+    s_frame_num = 0;
+    s_timeline_loaded = false;
+}
+
 /* -------------------------------------------------- */
 
 esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
@@ -44,12 +57,14 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
         return ESP_ERR_INVALID_ARG;
     }
 
+    clear_cached_timestamps();
     memset(out, 0, sizeof(*out));
 
     FIL fp;
     UINT br;
     uint32_t checksum_calc = 0;
     uint32_t checksum_read = 0;
+    uint32_t* timestamps = NULL;
 
     FRESULT fr = f_open(&fp, control_path, FA_READ);
     if(fr != FR_OK) {
@@ -117,6 +132,16 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
 
     checksum_add_u32(&checksum_calc, frame_num);
 
+    if(frame_num > 0) {
+        timestamps = (uint32_t*)malloc(frame_num * sizeof(uint32_t));
+        if(!timestamps) {
+            ESP_LOGE(TAG, "no memory for %lu timestamps", (unsigned long)frame_num);
+            f_close(&fp);
+            memset(out, 0, sizeof(*out));
+            return ESP_ERR_NO_MEM;
+        }
+    }
+
     /* ===== timestamps ===== */
     for(uint32_t i = 0; i < frame_num; i++) {
         uint32_t timestamp;
@@ -124,6 +149,7 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
             goto io_fail;
         }
         checksum_add_u32(&checksum_calc, timestamp);
+        timestamps[i] = timestamp;
     }
 
 
@@ -135,33 +161,98 @@ esp_err_t get_channel_info(const char* control_path, ch_info_t* out) {
     /* ===== verify checksum ===== */
     if(checksum_read != checksum_calc) {
         ESP_LOGE(TAG, "checksum mismatch! read=%lu calculated=%lu", (unsigned long)checksum_read, (unsigned long)checksum_calc);
+        free(timestamps);
+        f_close(&fp);
         memset(out, 0, sizeof(*out));
         return ESP_ERR_INVALID_CRC;
     }
 
     f_close(&fp);
+    s_timestamps = timestamps;
+    s_frame_num = frame_num;
+    s_timeline_loaded = true;
 
+    if(frame_num == 0) {
+        ESP_LOGI(TAG, "timeline loaded: frame_num=0");
+    } else {
+        ESP_LOGI(TAG,
+                 "timeline loaded: frame_num=%lu first_ts=%lu last_ts=%lu",
+                 (unsigned long)frame_num,
+                 (unsigned long)s_timestamps[0],
+                 (unsigned long)s_timestamps[frame_num - 1U]);
+    }
     ESP_LOGI(TAG, "channel info loaded, checksum OK");
     return ESP_OK;
     /* ---------------- error paths ---------------- */
 
 io_fail:
     ESP_LOGE(TAG, "I/O error while reading %s", control_path);
+    free(timestamps);
     f_close(&fp);
     memset(out, 0, sizeof(*out));
     return ESP_FAIL;
 
 fmt_fail:
     ESP_LOGE(TAG, "format error in %s", control_path);
+    free(timestamps);
     f_close(&fp);
     memset(out, 0, sizeof(*out));
     return ESP_ERR_INVALID_RESPONSE;
 
 version_fail:
     ESP_LOGE(TAG, "Version mismatch! Expected %d.%d, got %d.%d", EXPECTED_VERSION_MAJOR, EXPECTED_VERSION_MINOR, major, minor);
+    free(timestamps);
     f_close(&fp);
     memset(out, 0, sizeof(*out));
     return ESP_FAIL;
+}
+
+esp_err_t control_reader_find_seek_frame_idx(uint64_t time_ms, uint32_t* out_frame_idx) {
+    if(!out_frame_idx) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if(!s_timeline_loaded) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if(s_frame_num == 0) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    uint32_t frame_idx = 0;
+
+    while((frame_idx + 1U) < s_frame_num && (uint64_t)s_timestamps[frame_idx + 1U] <= time_ms) {
+        frame_idx++;
+    }
+
+    if(s_frame_num >= 2U && frame_idx >= (s_frame_num - 1U)) {
+        frame_idx = s_frame_num - 2U;
+    }
+
+    *out_frame_idx = frame_idx;
+    return ESP_OK;
+}
+
+uint32_t control_reader_frame_count(void) {
+    return s_frame_num;
+}
+
+esp_err_t control_reader_get_timestamp(uint32_t frame_idx, uint32_t* out_timestamp) {
+    if(!out_timestamp) {
+        return ESP_ERR_INVALID_ARG;
+    }
+    if(!s_timeline_loaded) {
+        return ESP_ERR_INVALID_STATE;
+    }
+    if(frame_idx >= s_frame_num) {
+        return ESP_ERR_NOT_FOUND;
+    }
+
+    *out_timestamp = s_timestamps[frame_idx];
+    return ESP_OK;
+}
+
+void control_reader_clear(void) {
+    clear_cached_timestamps();
 }
 /* ---------- helpers ---------- */
 
