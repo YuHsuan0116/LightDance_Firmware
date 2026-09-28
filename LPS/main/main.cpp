@@ -16,6 +16,7 @@
 #include "sd_logger.h"
 #include "sd_utils.h"
 #include "tcp_client.h"
+#include "BatteryMonitor.hpp"
 
 #include <stdio.h>
 #include <string.h>
@@ -247,6 +248,24 @@ static void log_player_id_banner(int player_id) {
     ESP_LOGI(TAG, "================================================");
 }
 
+static void initialize_voltage_sense(void) {
+    BatteryMonitor& batteryMonitor = BatteryMonitor::getInstance();
+    esp_err_t err = batteryMonitor.init();
+    if(err != ESP_OK) {
+        ESP_LOGW(TAG, "battery voltage sensing unavailable: %s", esp_err_to_name(err));
+        return;
+    }
+
+    uint32_t battery_mv = 0;
+    err = batteryMonitor.readMv(battery_mv);
+    if(err != ESP_OK) {
+        ESP_LOGW(TAG, "initial battery voltage read failed: %s", esp_err_to_name(err));
+        return;
+    }
+
+    ESP_LOGI(TAG, "battery voltage: %lu mV", (unsigned long)battery_mv);
+}
+
 static esp_err_t init_bluetooth_receiver(int player_id) {
     const bt_receiver_config_t rx_cfg = {
         .feedback_gpio_num = -1,
@@ -315,6 +334,7 @@ static void app_task(void* arg) {
     if(!nvs_ready) {
         ESP_LOGE(TAG, "NVS initialization failed: %s", esp_err_to_name(err));
     }
+    
 #if LD_CFG_ENABLE_BT
     const int player_id = load_player_id(nvs_ready);
     log_player_id_banner(player_id);
@@ -375,6 +395,8 @@ static void app_task(void* arg) {
         ESP_LOGI(TAG, "Bluetooth receiver ready");
     }
 #endif
+
+    initialize_voltage_sense();
 
     // 10. Start the local diagnostic command source after the Player is ready.
     console_test();

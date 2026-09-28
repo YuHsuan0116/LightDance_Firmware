@@ -9,6 +9,7 @@
 #include "ld_nvs.h"
 
 #include "player.hpp"
+#include "BatteryMonitor.hpp"
 
 /* ================= config ================= */
 
@@ -22,6 +23,23 @@ static esp_console_repl_t* repl = NULL;
 static esp_console_repl_config_t repl_config = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
 
 /* ================= command handlers ================= */
+
+static int cmd_battery(int argc, char** argv) {
+    if(argc != 1) {
+        printf("Usage: battery\n");
+        return 1;
+    }
+
+    uint32_t batteryMv = 0;
+    const esp_err_t err = BatteryMonitor::getInstance().readMv(batteryMv);
+    if(err != ESP_OK) {
+        printf("Battery voltage read failed: %s\n", esp_err_to_name(err));
+        return 1;
+    }
+
+    printf("Battery voltage: %lu mV\n", static_cast<unsigned long>(batteryMv));
+    return 0;
+}
 
 static int cmd_play(int argc, char** argv) {
     Player::getInstance().play();
@@ -178,6 +196,7 @@ static void register_cmd(const char* name, const char* help, esp_console_cmd_fun
 }
 
 static void register_all_commands(void) {
+    register_cmd("battery", "read battery voltage in mV", &cmd_battery);
     register_cmd("play", "start playback", &cmd_play);
     register_cmd("pause", "pause playback", &cmd_pause);
     register_cmd("stop", "stop playback", &cmd_stop);
@@ -188,6 +207,7 @@ static void register_all_commands(void) {
     register_cmd("seek", "seek time", &cmd_seek);
     register_cmd("nvs", "NVS u8: nvs set <key> <value> | nvs get <key>", &cmd_nvs);
 }
+
 
 /* ================= console entry ================= */
 
