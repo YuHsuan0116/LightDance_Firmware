@@ -1,0 +1,19 @@
+[project]
+name = "toy"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Lin-Yu-Hsuan", email = "b13901036@ntu.edu.tw" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "requests>=2.34.2",
+]
+
+[project.scripts]
+toy = "toy:main"
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
