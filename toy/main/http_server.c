@@ -6,22 +6,9 @@ static const char* TAG = "http_server";
 
 httpd_handle_t s_server = NULL;
 
-static esp_err_t open_handler(httpd_handle_t server, int sockfd) {
-    int enable = 1;
-
-    ESP_RETURN_ON_FALSE(setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &enable, sizeof(enable)) == 0,
-                        ESP_FAIL, TAG, "failed to enable TCP_NODELAY: errno=%d (%s)", errno,
-                        strerror(errno));
-
-    ESP_LOGI(TAG, "New TCP connection: %d", sockfd);
-
-    return ESP_OK;
-}
-
 esp_err_t http_server_run() {
     ESP_RETURN_ON_FALSE(s_server == NULL, ESP_ERR_INVALID_STATE, TAG, "Server already started");
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.open_fn = open_handler;
 
     ESP_RETURN_ON_ERROR(httpd_start(&s_server, &config), TAG, "Failed to start HTTP server");
 

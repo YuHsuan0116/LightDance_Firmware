@@ -45,12 +45,13 @@ static void app_task(void*) {
             case APP_CMD_PLAY:
                 ESP_LOGI(TAG, "Received play");
                 for (int i = 0; i < 100; i++) {
-                    data[i].r = 255;
-                    data[i].g = 255;
-                    data[i].b = 255;
+                    data[i].r = 31;
+                    data[i].g = 0;
+                    data[i].b = 0;
                 }
                 for (int i = 0; i < 8; i++) {
                     ws2812b_set_grb_n(&strip[i], data, 100);
+                    ws2812b_wait_done(&strip[i]);
                 }
                 break;
             case APP_CMD_TEST:
@@ -62,6 +63,7 @@ static void app_task(void*) {
                 }
                 for (int i = 0; i < 8; i++) {
                     ws2812b_set_grb_n(&strip[i], data, 100);
+                    ws2812b_wait_done(&strip[i]);
                 }
                 break;
             case APP_CMD_STOP:
@@ -73,6 +75,7 @@ static void app_task(void*) {
                 }
                 for (int i = 0; i < 8; i++) {
                     ws2812b_set_grb_n(&strip[i], data, 100);
+                    ws2812b_wait_done(&strip[i]);
                 }
                 break;
             default:
@@ -118,7 +121,7 @@ esp_err_t app_send_test_rainbow() {
 
 esp_err_t app_send_stop() {
     app_cmd_t _cmd;
-    _cmd.type = APP_CMD_TEST;
+    _cmd.type = APP_CMD_STOP;
     xQueueSend(s_queue, &_cmd, 0);
     return ESP_OK;
 }
